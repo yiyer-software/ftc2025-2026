@@ -1,5 +1,9 @@
 ## AUTHOR: YASHRAJ IYER
 
+## CONTROLS
+
+https://docs.google.com/document/d/1fe5rA8YPrMiD4qJWNARTWKD4LjB4FvnRTfNkFmyv96k/edit?usp=sharing
+
 ## NOTICE
 
 This repository contains the public FTC SDK for the DECODE (2025-2026) competition season.
