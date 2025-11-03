@@ -48,16 +48,16 @@ public class TeleOpDecodeV25N05 extends LinearOpMode {
     private static final double APRILTAG_SIZE = 0.166;
 
     // AprilTag IDs
-    private static final int RED_TARGET_ID = 5;      // Single Red Alliance Goal
-    private static final int BLUE_TARGET_ID = 2;     // Single Blue Alliance Goal
-    private static final int TAG_ID_ASCENT = 11;
-    private static final int TAG_ID_DESCENT = 12;
-    private static final int TAG_ID_DEEP_DIVE = 13;
+    private static final int RED_TARGET_ID = 24;      // Single Red Alliance Goal
+    private static final int BLUE_TARGET_ID = 20;     // Single Blue Alliance Goal
+    private static final int TAG_ID_ASCENT = 21;
+    private static final int TAG_ID_DESCENT = 22;
+    private static final int TAG_ID_DEEP_DIVE = 23;
 
     // Motif Color Patterns
-    private static final String[] PATTERN_ASCENT = {"RED", "GREEN", "BLUE"};
-    private static final String[] PATTERN_DESCENT = {"GREEN", "BLUE", "RED"};
-    private static final String[] PATTERN_DEEP_DIVE = {"BLUE", "RED", "GREEN"};
+    private static final String[] PATTERN_ASCENT = {"GREEN", "PURPLE", "PURPLE"};
+    private static final String[] PATTERN_DESCENT = {"PURPLE", "GREEN", "PURPLE"};
+    private static final String[] PATTERN_DEEP_DIVE = {"PURPLE", "PURPLE", "GREEN"};
 
     // Gameplay Parameters
     private static final boolean ENFORCE_LAUNCH_ZONES_IN_AUTO = true;
@@ -104,6 +104,7 @@ public class TeleOpDecodeV25N05 extends LinearOpMode {
     // Behavior Flags
     private static final boolean ENABLE_FLYWHEEL_IDLE = true;
 
+    //Code
     private DcMotor frontLeft, frontRight, backLeft, backRight;
     private DcMotor launcherLeft, launcherRight, intakeMotor;
     private Servo cameraServo, liftServoLeft, liftServoRight;
