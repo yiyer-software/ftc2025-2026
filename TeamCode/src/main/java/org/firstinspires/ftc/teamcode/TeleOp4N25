@@ -1,0 +1,273 @@
+package org.firstinspires.ftc.teamcode;
+
+import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.Servo;
+import com.qualcomm.robotcore.util.ElapsedTime;
+import com.qualcomm.robotcore.util.Range;
+import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
+import org.openftc.apriltag.AprilTagDetection;
+import org.openftc.easyopencv.OpenCvCamera;
+import org.openftc.easyopencv.OpenCvCameraFactory;
+import org.openftc.easyopencv.OpenCvCameraRotation;
+
+import java.util.ArrayList;
+
+@TeleOp(name="TeleOp4N25", group="Competition")
+public class TeleOp4N25 extends LinearOpMode {
+
+    // ================== ENUMS & CONSTANTS ==================
+    private enum Alliance { RED, BLUE }
+    private static final Alliance SELECTED_ALLIANCE = Alliance.BLUE;
+    private enum PipelineType { BALL, APRILTAG }
+
+    // Hardware names
+    private static final String MOTOR_FRONT_LEFT = "frontLeft", MOTOR_FRONT_RIGHT = "frontRight";
+    private static final String MOTOR_BACK_LEFT = "backLeft", MOTOR_BACK_RIGHT = "backRight";
+    private static final String MOTOR_LAUNCHER_LEFT = "launcherLeft", MOTOR_LAUNCHER_RIGHT = "launcherRight";
+    private static final String MOTOR_INTAKE = "intakeMotor";
+    private static final String SERVO_LIFT_LEFT = "liftServoLeft", SERVO_LIFT_RIGHT = "liftServoRight";
+    private static final String CAMERA_NAME = "Webcam 1";
+
+    // Camera calibration
+    private static final double CAMERA_FX = 578.272, CAMERA_FY = 578.272;
+    private static final double CAMERA_CX = 402.145, CAMERA_CY = 221.506;
+    private static final int CAMERA_WIDTH = 800, CAMERA_HEIGHT = 448;
+    private static final double APRILTAG_SIZE = 0.166;
+    private static final int BLUE_TARGET_ID = 20, RED_TARGET_ID = 24;
+
+    // Mechanism constants
+    private static final double DRIVE_SPEED_NORMAL = 1.0, DRIVE_SPEED_SLOW = 0.5, DRIVE_DEADZONE = 0.05;
+    private static final double LIFT_DOWN_POS = 0.0, LIFT_UP_POS = 0.85;
+    private static final double FLYWHEEL_LAUNCH_POWER = 0.9, FLYWHEEL_IDLE_POWER = 0.3, INTAKE_POWER = 0.75;
+
+    // ================== HARDWARE & CAMERA ==================
+    private DcMotor frontLeft, frontRight, backLeft, backRight, launcherLeft, launcherRight, intakeMotor;
+    private Servo liftServoLeft, liftServoRight;
+    private OpenCvCamera camera;
+    private AprilTagDetectionPipeline aprilTagPipeline;
+    private BallDetectionPipeline ballDetectionPipeline;
+    private PipelineType currentPipelineType = PipelineType.BALL;  // default
+    private AprilTagDetection currentTag = null;
+
+    // ================== STATE VARIABLES ==================
+    private boolean liftIsUp = false, precisionMode = false, ballFound = false;
+    private boolean lastX, lastY, lastRB;
+    private ElapsedTime runtime = new ElapsedTime();
+
+    // ================== MAIN ==================
+    @Override
+    public void runOpMode() {
+        initializeHardware();
+        initializeCamera();
+
+        telemetry.addData("Status", "Initialized");
+        telemetry.addLine("Press Y to switch pipeline (Ball/AprilTag)");
+        telemetry.update();
+
+        waitForStart();
+        runtime.reset();
+
+        while (opModeIsActive()) {
+            updateButtons();
+
+            if (currentPipelineType == PipelineType.BALL && ballDetectionPipeline.isBallFound()) {
+                ballFound = true;
+                telemetry.addLine("Ball Detected! Turning and intaking...");
+                avoidAndPickupBall();
+            }
+
+            if (currentPipelineType == PipelineType.APRILTAG) {
+                currentTag = detectAllianceTag();
+                if (currentTag != null) {
+                    telemetry.addData("AprilTag", "ID %d | Dist %.2f", currentTag.id, currentTag.pose.z);
+                }
+            }
+
+            // Manual controls
+            handleDriveControl();
+            handleFlywheelControl();
+            handleIntakeControl();
+
+            updateTelemetry();
+            sleep(20);
+        }
+
+        cleanup();
+    }
+
+    // ================== INITIALIZATION ==================
+    private void initializeHardware() {
+        frontLeft = hardwareMap.get(DcMotor.class, MOTOR_FRONT_LEFT);
+        frontRight = hardwareMap.get(DcMotor.class, MOTOR_FRONT_RIGHT);
+        backLeft = hardwareMap.get(DcMotor.class, MOTOR_BACK_LEFT);
+        backRight = hardwareMap.get(DcMotor.class, MOTOR_BACK_RIGHT);
+        launcherLeft = hardwareMap.get(DcMotor.class, MOTOR_LAUNCHER_LEFT);
+        launcherRight = hardwareMap.get(DcMotor.class, MOTOR_LAUNCHER_RIGHT);
+        intakeMotor = hardwareMap.get(DcMotor.class, MOTOR_INTAKE);
+        liftServoLeft = hardwareMap.get(Servo.class, SERVO_LIFT_LEFT);
+        liftServoRight = hardwareMap.get(Servo.class, SERVO_LIFT_RIGHT);
+
+        // Directions
+        frontLeft.setDirection(DcMotor.Direction.REVERSE);
+        backLeft.setDirection(DcMotor.Direction.REVERSE);
+        launcherRight.setDirection(DcMotor.Direction.REVERSE);
+
+        liftServoLeft.setPosition(LIFT_DOWN_POS);
+        liftServoRight.setPosition(1 - LIFT_DOWN_POS);
+    }
+
+    private void initializeCamera() {
+        int cameraMonitorViewId = hardwareMap.appContext.getResources()
+                .getIdentifier("cameraMonitorViewId", "id", hardwareMap.appContext.getPackageName());
+        camera = OpenCvCameraFactory.getInstance()
+                .createWebcam(hardwareMap.get(WebcamName.class, CAMERA_NAME), cameraMonitorViewId);
+
+        aprilTagPipeline = new AprilTagDetectionPipeline(APRILTAG_SIZE, CAMERA_FX, CAMERA_FY, CAMERA_CX, CAMERA_CY);
+        ballDetectionPipeline = new BallDetectionPipeline(CAMERA_WIDTH);
+
+        camera.setPipeline(ballDetectionPipeline);
+        currentPipelineType = PipelineType.BALL;
+
+        camera.openCameraDeviceAsync(new OpenCvCamera.AsyncCameraOpenListener() {
+            @Override public void onOpened() {
+                camera.startStreaming(CAMERA_WIDTH, CAMERA_HEIGHT, OpenCvCameraRotation.UPRIGHT);
+            }
+            @Override public void onError(int errorCode) {}
+        });
+    }
+
+    // ================== CONTROLS ==================
+    private void updateButtons() {
+        boolean x = gamepad1.x, y = gamepad1.y, rb = gamepad1.right_bumper;
+
+        if (x && !lastX) toggleLift();
+        if (rb && !lastRB) precisionMode = !precisionMode;
+        if (y && !lastY) switchPipelines();
+
+        lastX = x; lastY = y; lastRB = rb;
+    }
+
+    private void handleDriveControl() {
+        double drive = applyDeadzone(-gamepad1.left_stick_y);
+        double strafe = applyDeadzone(gamepad1.left_stick_x);
+        double turn = applyDeadzone(-gamepad1.right_stick_x);
+
+        double speed = precisionMode ? DRIVE_SPEED_SLOW : DRIVE_SPEED_NORMAL;
+        setMecanumDrive(drive * speed, strafe * speed, turn * speed);
+    }
+
+    private void handleFlywheelControl() {
+        if (gamepad1.right_trigger > 0.05)
+            setFlywheelPower(FLYWHEEL_LAUNCH_POWER);
+        else if (gamepad1.left_trigger > 0.05)
+            setFlywheelPower(FLYWHEEL_IDLE_POWER);
+        else
+            setFlywheelPower(0);
+    }
+
+    private void handleIntakeControl() {
+        if (gamepad1.a) intakeMotor.setPower(INTAKE_POWER);
+        else if (gamepad1.b) intakeMotor.setPower(-INTAKE_POWER);
+        else intakeMotor.setPower(0);
+    }
+
+    // ================== AUTO ACTIONS ==================
+    private void avoidAndPickupBall() {
+        double ballX = ballDetectionPipeline.getBallXError();
+        if (Math.abs(ballX) > 20) {
+            setMecanumDrive(0, 0, ballX > 0 ? -0.4 : 0.4);
+            sleep(300);
+        }
+        // Turn 180° from ball
+        setMecanumDrive(0, 0, 0.6);
+        sleep(1000);
+        stopAllMotors();
+
+        // Move forward to intake
+        intakeMotor.setPower(INTAKE_POWER);
+        setMecanumDrive(0.5, 0, 0);
+        sleep(800);
+        stopAllMotors();
+        intakeMotor.setPower(0);
+        ballFound = false;
+    }
+
+    private AprilTagDetection detectAllianceTag() {
+        int targetId = (SELECTED_ALLIANCE == Alliance.BLUE) ? BLUE_TARGET_ID : RED_TARGET_ID;
+        ArrayList<AprilTagDetection> detections = aprilTagPipeline.getLatestDetections();
+        if (detections == null) return null;
+        for (AprilTagDetection tag : detections) {
+            if (tag.id == targetId) return tag;
+        }
+        return null;
+    }
+
+    private void switchPipelines() {
+        if (currentPipelineType == PipelineType.BALL) {
+            camera.setPipeline(aprilTagPipeline);
+            currentPipelineType = PipelineType.APRILTAG;
+        } else {
+            camera.setPipeline(ballDetectionPipeline);
+            currentPipelineType = PipelineType.BALL;
+        }
+        telemetry.addData("Switched Pipeline", currentPipelineType);
+        telemetry.update();
+    }
+
+    // ================== UTILITY ==================
+    private void setMecanumDrive(double d, double s, double t) {
+        double fl = d + s + t;
+        double fr = d - s - t;
+        double bl = d - s + t;
+        double br = d + s - t;
+        double max = Math.max(1.0, Math.max(Math.abs(fl),
+                Math.max(Math.abs(fr), Math.max(Math.abs(bl), Math.abs(br)))));
+        frontLeft.setPower(fl / max);
+        frontRight.setPower(fr / max);
+        backLeft.setPower(bl / max);
+        backRight.setPower(br / max);
+    }
+
+    private void setFlywheelPower(double p) {
+        launcherLeft.setPower(p);
+        launcherRight.setPower(p);
+    }
+
+    private void toggleLift() {
+        liftIsUp = !liftIsUp;
+        double pos = liftIsUp ? LIFT_UP_POS : LIFT_DOWN_POS;
+        liftServoLeft.setPosition(pos);
+        liftServoRight.setPosition(1.0 - pos);
+    }
+
+    private void stopAllMotors() {
+        frontLeft.setPower(0); frontRight.setPower(0);
+        backLeft.setPower(0); backRight.setPower(0);
+    }
+
+    private double applyDeadzone(double v) {
+        return Math.abs(v) < DRIVE_DEADZONE ? 0 : v;
+    }
+
+    private void updateTelemetry() {
+        telemetry.addData("Runtime", "%.1f", runtime.seconds());
+        telemetry.addData("Lift", liftIsUp ? "UP" : "DOWN");
+        telemetry.addData("Drive Mode", precisionMode ? "SLOW" : "NORMAL");
+        telemetry.addData("Pipeline", currentPipelineType);
+        if (currentPipelineType == PipelineType.BALL && ballDetectionPipeline.isBallFound()) {
+            telemetry.addData("Ball", "X: %.0f Y: %.0f",
+                    ballDetectionPipeline.getBallX(), ballDetectionPipeline.getBallY());
+        }
+        telemetry.update();
+    }
+
+    private void cleanup() {
+        if (camera != null) camera.stopStreaming();
+        stopAllMotors();
+        intakeMotor.setPower(0);
+        launcherLeft.setPower(0);
+        launcherRight.setPower(0);
+    }
+}
