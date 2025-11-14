@@ -8,8 +8,17 @@ import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
 
-@TeleOp(name = "FTCDecodeCompetitionTeleOpManualPID_THEGREAT", group = "Competition")
-public class FTCDecodeCompetitionTeleOpManualPID extends LinearOpMode {
+import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
+import org.openftc.easyopencv.OpenCvCamera;
+import org.openftc.easyopencv.OpenCvCameraFactory;
+import org.openftc.easyopencv.OpenCvCameraRotation;
+import org.firstinspires.ftc.apriltag.AprilTagDetection;
+import org.openftc.easyopencv.OpenCvPipeline;
+
+import java.util.ArrayList;
+
+@TeleOp(name = "FTCDecodeCompetitionTeleOpManualPID_SYNC", group = "Competition")
+public class FTCDecodeCompetitionTeleOpManualPID_SYNC extends LinearOpMode {
 
     // Drive motors
     private DcMotorEx frontLeft, frontRight, backLeft, backRight;
@@ -43,16 +52,32 @@ public class FTCDecodeCompetitionTeleOpManualPID extends LinearOpMode {
     private final double DRIVE_RPM = 2500;
     private final double DRIVE_TICKS_PER_SEC = (DRIVE_RPM / 60.0) * TICKS_PER_REV;
 
+    // --- AprilTag stuff ---
+    private OpenCvCamera camera;
+    private OpenCvPipeline aprilTagPipeline;
+    private AprilTagDetection tagOfInterest = null;
+    private double yaw = 0.0;
+    private double pitch = 0.0;
+
+    // Control constants for automatic corrections
+    private double yawThreshold = 2.0;
+    private double pitchThreshold = 2.0;
+
     @Override
     public void runOpMode() {
         initHardware();
+        initCamera();
+
         waitForStart();
 
         while (opModeIsActive()) {
-            mecanumDrive();
+            updateAprilTag();
+            centerOnTag();
+
+            mecanumDriveSync();
             controlIntake();
             controlFlaps();
-            updateLauncherVelocity();
+            updateLauncherVelocitySync();
             updateTelemetry();
         }
     }
@@ -71,12 +96,10 @@ public class FTCDecodeCompetitionTeleOpManualPID extends LinearOpMode {
         liftLeft = hardwareMap.get(Servo.class, "liftServoLeft");
         liftRight = hardwareMap.get(Servo.class, "liftServoRight");
 
-        // Motor directions
         frontRight.setDirection(DcMotorSimple.Direction.REVERSE);
         backRight.setDirection(DcMotorSimple.Direction.REVERSE);
         launcherRight.setDirection(DcMotorSimple.Direction.REVERSE);
 
-        // Modes
         frontLeft.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         frontRight.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         backLeft.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
@@ -89,8 +112,54 @@ public class FTCDecodeCompetitionTeleOpManualPID extends LinearOpMode {
         battery = hardwareMap.voltageSensor.iterator().next();
     }
 
-    /** Mecanum drive with smooth velocity control **/
-    private void mecanumDrive() {
+    private void initCamera() {
+        int cameraMonitorViewId = hardwareMap.appContext.getResources()
+                .getIdentifier("cameraMonitorViewId", "id", hardwareMap.appContext.getPackageName());
+
+        camera = OpenCvCameraFactory.getInstance()
+                .createWebcam(hardwareMap.get(WebcamName.class, "Webcam 1"), cameraMonitorViewId);
+
+        // Example pipeline (replace with your AprilTag pipeline)
+        aprilTagPipeline = new OpenCvPipeline() {};
+        camera.setPipeline(aprilTagPipeline);
+
+        camera.openCameraDeviceAsync(new OpenCvCamera.AsyncCameraOpenListener() {
+            @Override
+            public void onOpened() { camera.startStreaming(800, 448, OpenCvCameraRotation.UPRIGHT); }
+            @Override
+            public void onError(int errorCode) {}
+        });
+    }
+
+    private void updateAprilTag() {
+        // Simulate tag detection (replace with actual pipeline)
+        tagOfInterest = null;
+        yaw = 0.0;
+        pitch = 0.0;
+    }
+
+    private void centerOnTag() {
+        if (tagOfInterest == null) return;
+
+        double x = 0.0;
+        double y = 0.0;
+        double rx = 0.0;
+
+        double kYaw = 0.01;
+        double kPitch = 0.01;
+
+        if (Math.abs(yaw) > yawThreshold) rx = -yaw * kYaw;
+        if (Math.abs(pitch) > pitchThreshold) y = -pitch * kPitch;
+
+        double speedScale = 0.5;
+        frontLeft.setVelocity((y + x + rx) * DRIVE_TICKS_PER_SEC * speedScale);
+        frontRight.setVelocity((y - x - rx) * DRIVE_TICKS_PER_SEC * speedScale);
+        backLeft.setVelocity((y - x + rx) * DRIVE_TICKS_PER_SEC * speedScale);
+        backRight.setVelocity((y + x - rx) * DRIVE_TICKS_PER_SEC * speedScale);
+    }
+
+    /** Mecanum drive with synchronized RPM for straight motion and immediate stop **/
+    private void mecanumDriveSync() {
         double y = -gamepad1.left_stick_y;
         double x = gamepad1.left_stick_x * 1.1;
         double rx = -gamepad1.right_stick_x;
@@ -107,33 +176,47 @@ public class FTCDecodeCompetitionTeleOpManualPID extends LinearOpMode {
         double bl = (y - x + rx) * speedScale;
         double br = (y + x - rx) * speedScale;
 
+        // Prevent overspeed and normalize
         double max = Math.max(1.0, Math.max(Math.abs(fl),
                 Math.max(Math.abs(fr), Math.max(Math.abs(bl), Math.abs(br)))));
-        fl /= max;
-        fr /= max;
-        bl /= max;
-        br /= max;
+        fl /= max; fr /= max; bl /= max; br /= max;
 
-        frontLeft.setVelocity(fl * DRIVE_TICKS_PER_SEC);
-        frontRight.setVelocity(fr * DRIVE_TICKS_PER_SEC);
-        backLeft.setVelocity(bl * DRIVE_TICKS_PER_SEC);
-        backRight.setVelocity(br * DRIVE_TICKS_PER_SEC);
+        // Stop motors immediately if all sticks near zero
+        if (Math.abs(y) < DEADZONE && Math.abs(x) < DEADZONE && Math.abs(rx) < DEADZONE) {
+            frontLeft.setPower(0);
+            frontRight.setPower(0);
+            backLeft.setPower(0);
+            backRight.setPower(0);
+            return;
+        }
+
+        double velocityFL = fl * DRIVE_TICKS_PER_SEC;
+        double velocityFR = fr * DRIVE_TICKS_PER_SEC;
+        double velocityBL = bl * DRIVE_TICKS_PER_SEC;
+        double velocityBR = br * DRIVE_TICKS_PER_SEC;
+
+        frontLeft.setVelocity(velocityFL);
+        frontRight.setVelocity(velocityFR);
+        backLeft.setVelocity(velocityBL);
+        backRight.setVelocity(velocityBR);
 
         telemetry.addData("Speed Mode", speedScale == 1.0 ? "FAST" : "SLOW");
     }
 
-    /** Launcher RPM control **/
-    private void updateLauncherVelocity() {
+    /** Launcher velocity sync with voltage compensation **/
+    private void updateLauncherVelocitySync() {
         if (gamepad1.right_trigger > 0.5) targetRPM = highRPM;
         else if (gamepad1.left_trigger > 0.5) targetRPM = lowRPM;
         else targetRPM = 0;
 
-        double velocity = targetRPM > 50 ? (targetRPM / 60.0) * TICKS_PER_REV : 0.0;
+        double batteryVoltage = battery.getVoltage();
+        double compensation = 12.0 / batteryVoltage; // simple voltage compensation
+
+        double velocity = targetRPM > 50 ? (targetRPM / 60.0) * TICKS_PER_REV * compensation : 0.0;
         launcherLeft.setVelocity(velocity);
         launcherRight.setVelocity(velocity);
     }
 
-    /** Intake toggle & direct control **/
     private void controlIntake() {
         if (gamepad1.right_bumper && !lastIntakeToggle) intakeToggle = !intakeToggle;
         lastIntakeToggle = gamepad1.right_bumper;
@@ -147,7 +230,6 @@ public class FTCDecodeCompetitionTeleOpManualPID extends LinearOpMode {
         telemetry.addData("Intake Power", power);
     }
 
-    /** Flap control with toggle & timed auto-reset **/
     private void controlFlaps() {
         if (gamepad1.left_bumper && !lastFlapToggle) {
             flapUp = !flapUp;
@@ -163,7 +245,6 @@ public class FTCDecodeCompetitionTeleOpManualPID extends LinearOpMode {
         telemetry.addData("Flap", flapUp ? "UP" : "DOWN");
     }
 
-    /** Telemetry for launcher RPMs **/
     private void updateTelemetry() {
         telemetry.addData("Target RPM", targetRPM);
 
@@ -172,6 +253,8 @@ public class FTCDecodeCompetitionTeleOpManualPID extends LinearOpMode {
 
         telemetry.addData("Left RPM", leftRPM);
         telemetry.addData("Right RPM", rightRPM);
+        telemetry.addData("Yaw", yaw);
+        telemetry.addData("Pitch", pitch);
         telemetry.update();
     }
 }
