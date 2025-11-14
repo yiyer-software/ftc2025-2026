@@ -24,8 +24,8 @@ public class TeleOpV3 extends LinearOpMode {
     private DcMotorEx launcherLeft, launcherRight;
     private Servo liftLeft, liftRight;
 
-    private static final double HIGH_RPM = 3150;
-    private static final double LOW_RPM = 2500;
+    private static final double HIGH_RPM = -500;
+    private static final double LOW_RPM = -300;
     private double targetRPM = 0;
 
     private static final double TICKS_PER_REV = 28.0;
