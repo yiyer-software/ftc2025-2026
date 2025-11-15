@@ -17,7 +17,7 @@ public class Auto_Final_Wall_Basket extends LinearOpMode{
     private static final double LOW_RPM = -300;
     private double targetRPM = 0;
     private static final double TICKS_PER_REV = 28.0;
-    private static final double MAX_DRIVE_RPM = 6000;
+    private static final double MAX_DRIVE_RPM = 1000;
     private static final double DRIVE_TICKS_PER_SEC = (MAX_DRIVE_RPM / 60.0) * TICKS_PER_REV;
     private boolean intakeToggle = false;
     private boolean lastIntakeToggle = false;
@@ -47,6 +47,7 @@ public class Auto_Final_Wall_Basket extends LinearOpMode{
             telemetry.addData("Flywheel", "Spinning to %.0f RPM", MAX_DRIVE_RPM);
             telemetry.update();
 
+            //No for-loop on purpose, for better tuning for the timings!!
             flapsControlUp();
             sleep(500);
             flapsControlDown();
