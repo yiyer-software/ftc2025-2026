@@ -35,7 +35,7 @@ public class Auto_Final_Wall extends LinearOpMode{
     @Override
     public void runOpMode() throws InterruptedException{
         initHardware();
-        liftLeft.setPosition(FLAP_DOWN_POS);
+        liftLeft.setPosition(1-FLAP_DOWN_POS);
         liftRight.setPosition(FLAP_DOWN_POS);
         waitForStart();
 
