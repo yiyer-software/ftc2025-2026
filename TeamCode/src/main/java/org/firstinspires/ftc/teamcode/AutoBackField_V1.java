@@ -40,9 +40,9 @@ public class AutoBackField_V1 extends LinearOpMode {
     private static final long   INTAKE_RUN_MS     = 900;     // total intake runtime for that ball (approx)
 
     // Edit this variables as needed
-    private static double forwardMovement = 1
-    private static double turnAngle = 40
-    private statis double horizontalMovement = -4
+    private static double forwardMovement = 1;
+    private static double turnAngle = 40;
+    private static  double horizontalMovement = -4;
 
     @Override
     public void runOpMode() throws InterruptedException {
@@ -102,7 +102,7 @@ public class AutoBackField_V1 extends LinearOpMode {
         driveForwardInches(forwardMovement, 0.30);
         sleep(500);
         driveTurn(turnAngle);
-        sleep(300)
+        sleep(300);
         driveRightInches(horizontalMovement, 0.30);
         // --------- Fire first preloaded ball (lift once and reset) ----------
         moveLiftTo(LIFT_POS_UP, SERVO_TRAVEL_MS);
@@ -170,8 +170,8 @@ public class AutoBackField_V1 extends LinearOpMode {
         }
 
         // Ensure final exact position
-        leftLift.setPosition(targetPos);
-        rightLift.setPosition(finalRightTarget);
+        leftLift.setPosition(finalLeftTarget);
+        rightLift.setPosition(targetPos);
     }
 
     /**
