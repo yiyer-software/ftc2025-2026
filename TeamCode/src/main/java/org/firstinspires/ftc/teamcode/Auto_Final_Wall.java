@@ -35,8 +35,8 @@ public class Auto_Final_Wall extends LinearOpMode{
     @Override
     public void runOpMode() throws InterruptedException{
         initHardware();
-        liftLeft.setPosition(1-FLAP_DOWN_POS);
-        liftRight.setPosition(FLAP_DOWN_POS);
+        liftLeft.setPosition(FLAP_DOWN_POS);
+        liftRight.setPosition(1-FLAP_DOWN_POS);
         waitForStart();
 
         while (opModeIsActive()){
@@ -102,7 +102,7 @@ public class Auto_Final_Wall extends LinearOpMode{
 
     private void flapsControlDown(){
         liftLeft.setPosition(0);
-        liftRight.setPosition(0);
+        liftRight.setPosition(1);
     }
 
     private int inchesToTicks(double inches) {

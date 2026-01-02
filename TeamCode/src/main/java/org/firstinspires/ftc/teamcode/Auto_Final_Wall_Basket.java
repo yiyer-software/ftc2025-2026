@@ -17,7 +17,7 @@ public class Auto_Final_Wall_Basket extends LinearOpMode{
     private static final double LOW_RPM = -300;
     private double targetRPM = 0;
     private static final double TICKS_PER_REV = 28.0;
-    private static final double MAX_DRIVE_RPM = 1000;
+    private static final double MAX_DRIVE_RPM = 2100;
     private static final double DRIVE_TICKS_PER_SEC = (MAX_DRIVE_RPM / 60.0) * TICKS_PER_REV;
     private boolean intakeToggle = false;
     private boolean lastIntakeToggle = false;
@@ -35,33 +35,51 @@ public class Auto_Final_Wall_Basket extends LinearOpMode{
     @Override
     public void runOpMode() throws InterruptedException{
         initHardware();
-        liftLeft.setPosition(1-FLAP_DOWN_POS);
-        liftRight.setPosition(FLAP_DOWN_POS);
+        liftLeft.setPosition(FLAP_DOWN_POS);
+        liftRight.setPosition(1-FLAP_DOWN_POS);
         waitForStart();
-
+        double power = 1;
+        frontLeft.setPower(-(power));
+        frontRight.setPower(-(power));
+        backLeft.setPower(-(power));
+        backRight.setPower(-(power));
+        sleep(750);
+        frontLeft.setPower(0);
+        frontRight.setPower(0);
+        backLeft.setPower(0);
+        backRight.setPower(0);
+        launcherLeft.setVelocity(DRIVE_TICKS_PER_SEC);
+        launcherRight.setVelocity(-1*(DRIVE_TICKS_PER_SEC));
+        sleep(3000);
+        /**
         while (opModeIsActive()){
-            driveBack(5, 0.75);
-            launcherLeft.setVelocity(DRIVE_TICKS_PER_SEC);
-            launcherRight.setVelocity(DRIVE_TICKS_PER_SEC);
+
 
             telemetry.addData("Flywheel", "Spinning to %.0f RPM", MAX_DRIVE_RPM);
             telemetry.update();
 
             //No for-loop on purpose, for better tuning for the timings!!
             flapsControlUp();
-            sleep(500);
+            sleep(400);
             flapsControlDown();
+            sleep(300);
+            intakeMotor.setPower(0.45);
+            sleep(500); //Must test and change this
+            intakeMotor.setPower(0);
+            flapsControlUp();
+            sleep(400);
+            flapsControlDown();
+            sleep(300);
             intakeMotor.setPower(0.45);
             sleep(1000);
             intakeMotor.setPower(0);
             flapsControlUp();
+            sleep(400);
             flapsControlDown();
-            intakeMotor.setPower(0.45);
-            sleep(1000);
-            intakeMotor.setPower(0);
-            flapsControlUp();
-            flapsControlDown();
+            sleep(300);
+
         }
+         **/
 
     }
 
@@ -99,7 +117,7 @@ public class Auto_Final_Wall_Basket extends LinearOpMode{
 
     private void flapsControlDown(){
         liftLeft.setPosition(0);
-        liftRight.setPosition(0);
+        liftRight.setPosition(1);
     }
 
     private int inchesToTicks(double inches) {
@@ -118,23 +136,25 @@ public class Auto_Final_Wall_Basket extends LinearOpMode{
         backLeft.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         backRight.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
 
-        // Set target positions
+        /**
         frontLeft.setTargetPosition(target);
         frontRight.setTargetPosition(target);
         backLeft.setTargetPosition(target);
         backRight.setTargetPosition(target);
+         **/
 
-        // RUN_TO_POSITION mode
+        /**
         frontLeft.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         frontRight.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         backLeft.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         backRight.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+         **/
 
         // Apply power
-        frontLeft.setPower(power);
-        frontRight.setPower(power);
-        backLeft.setPower(power);
-        backRight.setPower(power);
+        frontLeft.setPower(-(power));
+        frontRight.setPower(-(power));
+        backLeft.setPower(-(power));
+        backRight.setPower(-(power));
 
         // Wait until all motors reach target
         while (opModeIsActive() &&
