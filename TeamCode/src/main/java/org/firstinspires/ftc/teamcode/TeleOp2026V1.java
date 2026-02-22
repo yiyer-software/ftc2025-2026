@@ -1,94 +1,81 @@
 package org.firstinspires.ftc.teamcode;
 
 import com.acmerobotics.dashboard.FtcDashboard;
+import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
+
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-import com.qualcomm.robotcore.hardware.DcMotorEx;
-import com.qualcomm.robotcore.hardware.DcMotor;
-import com.qualcomm.robotcore.hardware.DcMotorSimple;
-import com.qualcomm.robotcore.hardware.Servo;
-import com.qualcomm.robotcore.hardware.ColorSensor;
+import com.qualcomm.robotcore.hardware.*;
 import com.qualcomm.robotcore.util.ElapsedTime;
+import com.qualcomm.robotcore.hardware.ColorSensor;
+import com.qualcomm.robotcore.hardware.NormalizedColorSensor;
+import com.qualcomm.robotcore.hardware.NormalizedRGBA;
 
-import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
-import org.openftc.apriltag.AprilTagDetection;
-import org.openftc.easyopencv.OpenCvCamera;
-import org.openftc.easyopencv.OpenCvCameraFactory;
-import org.openftc.easyopencv.OpenCvCameraRotation;
-import org.openftc.easyopencv.OpenCvPipeline;
-import org.opencv.core.Mat;
-
-import java.util.ArrayList;
-
+@Config
 @TeleOp(name = "TeleOp2026V1", group = "Competition")
 public class TeleOp2026V1 extends LinearOpMode {
 
-    // --- DRIVE MOTORS ---
+    // ================= HARDWARE =================
     private DcMotorEx frontLeft, frontRight, backLeft, backRight;
-    // --- SHOOTER MOTORS ---
     private DcMotorEx launcherLeft, launcherRight;
-    // --- INTAKE & SORTING MOTORS ---
     private DcMotor intakeMotor, sortMotor;
-    // --- SERVOS ---
     private Servo hoodLeft, hoodRight, liftLeft, liftRight;
-    // --- COLOR SENSOR ---
     private ColorSensor colorSensor;
 
-    // --- DRIVE CONSTANTS ---
+    // ================= DASHBOARD SORTER VARIABLES =================
+    public static double SORT_MOTOR_TICKS_PER_REV = 560.0; // REV 20:1
+    public static double SORT_GEAR_NUM = 16.0;
+    public static double SORT_GEAR_DEN = 13.0;
+    public static double SORT_DEGREES = 120.0;
+    public static double SORT_POWER = 0.5;
+
+    private double ticksPerOutputRev;
+    private double ticksPerDegree;
+    private int SORT_MOVE_TICKS;
+
+    // ================= DRIVE CONSTANTS =================
     private double TICKS_PER_REV = 28.0;
     private double MAX_RPM = 7000;
     private double DRIVE_TICKS_PER_SEC;
     private double DRIVE_DEADZONE = 0.03;
 
-    // --- TOGGLES ---
-    private boolean shooterOn=false, intakeOn=false, liftUp=false, sortOn=false;
-    private boolean lastY=false, lastB=false, lastLeftBumper=false, lastRightStickDown=false, lastX=false, lastA=false, lastDpadUp=false, lastDpadDown=false;
+    // ================= STATE =================
+    private boolean shooterOn=false, intakeOn=false, sortOn=false;
+    private boolean lastY=false, lastB=false, lastX=false, lastRB=false;
 
-    // --- SHOOTER & HOOD ---
-    private double targetRPM=0;
-    private double hoodPos=0.0;
-
-    // --- DASHBOARD ---
     private FtcDashboard dashboard;
     private MultipleTelemetry telemetryDashboard;
 
-    // --- CAMERA ---
-    private OpenCvCamera camera;
-    private AprilTagDetectionPipeline aprilTagPipeline;
-    private AprilTagDetection tagOfInterest=null;
+    private double lastTime = 0;
+    private double hoodPosX = 0.5;
 
-    // --- ALIGNMENT PID ---
-    private ElapsedTime alignmentTimer=new ElapsedTime();
-    private double kP=0.03, kI=0.0, kD=0.002;
-    private double lastRotationError=0;
-    private double rotationIntegral=0;
 
-    // --- AUTO-ALIGN DISTANCE TARGET ---
-    private double TARGET_DISTANCE_INCHES=25.0;
 
+    // ============================================================
     @Override
     public void runOpMode() {
 
-        // --- HARDWARE MAP ---
-        frontLeft = hardwareMap.get(DcMotorEx.class,"frontLeft");
-        frontRight = hardwareMap.get(DcMotorEx.class,"frontRight");
-        backLeft = hardwareMap.get(DcMotorEx.class,"backLeft");
-        backRight = hardwareMap.get(DcMotorEx.class,"backRight");
+        // HARDWARE MAP
+        frontLeft = hardwareMap.get(DcMotorEx.class,"leftFront");
+        frontRight = hardwareMap.get(DcMotorEx.class,"rightFront");
+        backLeft = hardwareMap.get(DcMotorEx.class,"leftBack");
+        backRight = hardwareMap.get(DcMotorEx.class,"rightBack");
 
-        launcherLeft = hardwareMap.get(DcMotorEx.class,"launcherLeft");
-        launcherRight = hardwareMap.get(DcMotorEx.class,"launcherRight");
+        launcherLeft = hardwareMap.get(DcMotorEx.class,"leftLauncher");
+        launcherRight = hardwareMap.get(DcMotorEx.class,"rightLauncher");
 
         intakeMotor = hardwareMap.get(DcMotor.class,"intakeMotor");
         sortMotor = hardwareMap.get(DcMotor.class,"sortMotor");
 
-        hoodLeft = hardwareMap.get(Servo.class,"hoodLeft");
-        hoodRight = hardwareMap.get(Servo.class,"hoodRight");
+        hoodLeft = hardwareMap.get(Servo.class,"leftHood");
+        hoodRight = hardwareMap.get(Servo.class,"rightHood");
         liftLeft = hardwareMap.get(Servo.class,"liftLeft");
         liftRight = hardwareMap.get(Servo.class,"liftRight");
 
         colorSensor = hardwareMap.get(ColorSensor.class,"colorSensor");
 
+        // MOTOR SETUP
         frontRight.setDirection(DcMotorSimple.Direction.REVERSE);
         backRight.setDirection(DcMotorSimple.Direction.REVERSE);
         launcherRight.setDirection(DcMotorSimple.Direction.REVERSE);
@@ -100,44 +87,36 @@ public class TeleOp2026V1 extends LinearOpMode {
 
         launcherLeft.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         launcherRight.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+
         intakeMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        sortMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+
+        sortMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        sortMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        sortMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
         DRIVE_TICKS_PER_SEC = (MAX_RPM/60.0)*TICKS_PER_REV;
 
-        // --- DASHBOARD ---
         dashboard = FtcDashboard.getInstance();
-        telemetryDashboard = new MultipleTelemetry(telemetry,dashboard.getTelemetry());
+        telemetryDashboard = new MultipleTelemetry(telemetry, dashboard.getTelemetry());
 
-        // --- CAMERA ---
-        int cameraMonitorViewId = hardwareMap.appContext.getResources()
-                .getIdentifier("cameraMonitorViewId","id",hardwareMap.appContext.getPackageName());
-
-        camera = OpenCvCameraFactory.getInstance()
-                .createWebcam(hardwareMap.get(WebcamName.class,"Webcam 1"),cameraMonitorViewId);
-
-        aprilTagPipeline = new AprilTagDetectionPipeline(0.166,578.272,578.272,402.145,221.506);
-        camera.setPipeline(aprilTagPipeline);
-        camera.openCameraDeviceAsync(new OpenCvCamera.AsyncCameraOpenListener(){
-            @Override public void onOpened(){ camera.startStreaming(800,448,OpenCvCameraRotation.UPRIGHT);}
-            @Override public void onError(int errorCode){}
-        });
+        // COMPUTE SORTER MATH
+        ticksPerOutputRev = SORT_MOTOR_TICKS_PER_REV * (SORT_GEAR_NUM / SORT_GEAR_DEN);
+        ticksPerDegree = ticksPerOutputRev / 360.0;
+        SORT_MOVE_TICKS = (int)Math.round(SORT_DEGREES * ticksPerDegree);
 
         waitForStart();
 
         while(opModeIsActive()){
             handleDrive();
             handleShooter();
-            handleIntake();
-            handleSort();
+            shootingSequence();
             handleLift();
-            handleAutoAlignAndMove();
             handleHoodManual();
             updateTelemetry();
         }
     }
 
-    // --- DRIVE ---
+    // ================= DRIVE =================
     private void handleDrive(){
         double y=-gamepad1.left_stick_y;
         double x=gamepad1.left_stick_x*1.15;
@@ -153,7 +132,7 @@ public class TeleOp2026V1 extends LinearOpMode {
         double br=y+x-rx;
 
         double max=Math.max(Math.abs(fl),Math.max(Math.abs(fr),Math.max(Math.abs(bl),Math.abs(br))));
-        if(max>1.0){ fl/=max; fr/=max; bl/=max; br/=max; }
+        if(max>1){ fl/=max; fr/=max; bl/=max; br/=max; }
 
         frontLeft.setVelocity(fl*DRIVE_TICKS_PER_SEC);
         frontRight.setVelocity(fr*DRIVE_TICKS_PER_SEC);
@@ -161,15 +140,13 @@ public class TeleOp2026V1 extends LinearOpMode {
         backRight.setVelocity(br*DRIVE_TICKS_PER_SEC);
     }
 
-    // --- SHOOTER ---
+    // ================= SHOOTER =================
     private void handleShooter(){
         boolean y=gamepad1.y;
         if(y&&!lastY) shooterOn=!shooterOn;
         lastY=y;
 
-        if(shooterOn) targetRPM=5000;
-        else targetRPM=0;
-
+        double targetRPM = shooterOn ? 5000 : 0;
         if(gamepad1.right_trigger>0.5) targetRPM=6500;
         if(gamepad1.left_trigger>0.5) targetRPM=3500;
 
@@ -177,155 +154,211 @@ public class TeleOp2026V1 extends LinearOpMode {
         launcherLeft.setVelocity(vel);
         launcherRight.setVelocity(vel);
     }
+    // ================= LIFT =================
+    private boolean liftActive=false;
+    private double liftStartTime=0;
 
-    // --- INTAKE ---
-    private void handleIntake(){
-        boolean b=gamepad1.b;
-        if(b&&!lastB) intakeOn=!intakeOn;
-        lastB=b;
-        intakeMotor.setPower(intakeOn?1:0);
-    }
-
-    // --- SORT ---
-    private void handleSort(){
-        boolean x=gamepad1.x;
-        if(x&&!lastX) sortOn=!sortOn;
-        lastX=x;
-        sortMotor.setPower(sortOn?1:0);
-    }
-
-    // --- LIFT ---
     private void handleLift(){
-        boolean lb=gamepad1.left_bumper;
-        if(lb&&!lastLeftBumper) liftUp=!liftUp;
-        lastLeftBumper=lb;
-        liftLeft.setPosition(liftUp?1:0);
-        liftRight.setPosition(liftUp?1:0);
+        if(gamepad1.a && !liftActive){
+            liftActive=true;
+            liftStartTime=getRuntime();
+            liftLeft.setPosition(1);
+            liftRight.setPosition(0);
+        }
+
+        if(liftActive && getRuntime()-liftStartTime>=0.5){
+            liftLeft.setPosition(0);
+            liftRight.setPosition(1);
+            liftActive=false;
+        }
     }
 
-    // --- HOOD MANUAL UP/DOWN ---
+    // ================= HOOD =================
     private void handleHoodManual(){
-        boolean dpadUp=gamepad1.dpad_up;
-        boolean dpadDown=gamepad1.dpad_down;
-        if(dpadUp&&!lastDpadUp) hoodPos+=0.05;
-        if(dpadDown&&!lastDpadDown) hoodPos-=0.05;
-        lastDpadUp=dpadUp;
-        lastDpadDown=dpadDown;
-        if(hoodPos>1) hoodPos=1;
-        if(hoodPos<0) hoodPos=0;
-        hoodLeft.setPosition(hoodPos);
-        hoodRight.setPosition(1-hoodPos);
+        double currentTime = getRuntime();
+        double dt = currentTime - lastTime;
+        lastTime = currentTime;
+
+        double speed = 0.05;
+
+        if(gamepad1.dpad_up) hoodPosX += speed * dt;
+        if(gamepad1.dpad_down) hoodPosX -= speed * dt;
+
+        hoodPosX = Math.max(0.35, Math.min(0.7, hoodPosX));
+
+        hoodLeft.setPosition(hoodPosX);
+        hoodRight.setPosition(1.0 - hoodPosX);
     }
 
-    // --- AUTO ALIGN & MOVE ---
-    private void handleAutoAlignAndMove(){
-        boolean rStickDown=gamepad1.right_stick_button;
-        if(rStickDown&&!lastRightStickDown) alignmentTimer.reset();
-        lastRightStickDown=rStickDown;
-
-        if(alignmentTimer.milliseconds()<5000){
-            Pose2D tagPose=getTag24Pose();
-            if(tagPose==null) return;
-
-            double headingError=0-tagPose.heading;
-            rotationIntegral+=headingError*0.02;
-            double rotationDerivative=(headingError-lastRotationError)/0.02;
-            lastRotationError=headingError;
-
-            double rotPower=kP*headingError+kI*rotationIntegral+kD*rotationDerivative;
-
-            double distanceError=TARGET_DISTANCE_INCHES-tagPose.distance;
-            double forwardPower=0.05*distanceError;
-            if(forwardPower>0.5) forwardPower=0.5;
-            if(forwardPower<-0.5) forwardPower=-0.5;
-
-            double fl=forwardPower+rotPower;
-            double fr=forwardPower-rotPower;
-            double bl=forwardPower+rotPower;
-            double br=forwardPower-rotPower;
-
-            frontLeft.setVelocity(fl*DRIVE_TICKS_PER_SEC);
-            frontRight.setVelocity(fr*DRIVE_TICKS_PER_SEC);
-            backLeft.setVelocity(bl*DRIVE_TICKS_PER_SEC);
-            backRight.setVelocity(br*DRIVE_TICKS_PER_SEC);
-
-            if(tagPose.distance<12){ hoodPos=0.0; targetRPM=3500; }
-            else if(tagPose.distance<24){ hoodPos=0.3; targetRPM=5000; }
-            else{ hoodPos=0.5; targetRPM=6500; }
-
-            double vel=targetRPM/60.0*TICKS_PER_REV;
-            launcherLeft.setVelocity(vel);
-            launcherRight.setVelocity(vel);
-
-            hoodLeft.setPosition(hoodPos);
-            hoodRight.setPosition(1-hoodPos);
+    private boolean shootingActive = false;
+    private boolean flywheelsStarted = false;
+    static final double COUNTS_PER_REV = 1378.0;
+    static final double COUNTS_PER_DEGREE = COUNTS_PER_REV / 360.0;
+    private int shootState = 0;
+    private double shootTimer = 0;
+    private void shootingSequence(){
+        boolean rb = gamepad1.right_bumper;
+        if (rb && !lastRB && !shootingActive) {
+            shootingActive = true;
+            shootState = 0;
         }
-    }
+        lastRB = rb;
+        double vel=6000.0/60.0*TICKS_PER_REV;
+        launcherLeft.setVelocity(vel);
+        launcherRight.setVelocity(vel);
+        flywheelsStarted = true;
 
-    // --- GET TAG 24 DATA ---
-    private Pose2D getTag24Pose(){
-        ArrayList<AprilTagDetection> detections=aprilTagPipeline.getLatestDetections();
-        for(AprilTagDetection tag:detections){
-            if(tag.id==24){
-                tagOfInterest=tag;
-                double x=tag.pose.x;
-                double y=tag.pose.y;
-                double distance=Math.hypot(x,y)*39.37;
-                double heading=Math.toDegrees(Math.atan2(y,x));
-                return new Pose2D(x,y,heading,distance);
-            }
+
+        if (!shootingActive) return;
+
+        switch (shootState) {
+
+            case 0:
+
+                if (!flywheelsStarted) {
+                    flywheelsStarted = true;
+                }
+
+                shootState = 1;
+                break;
+
+
+            case 1:
+
+                if (!sortMotor.isBusy()) {
+
+                    int currentPos = sortMotor.getCurrentPosition();
+                    SORT_MOVE_TICKS = (int)(120 * COUNTS_PER_DEGREE);
+                    int target = currentPos + SORT_MOVE_TICKS;
+
+                    sortMotor.setTargetPosition(target);
+                    sortMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+                    sortMotor.setPower(SORT_POWER);
+
+                    shootState = 2;
+                }
+                break;
+
+            case 2:
+
+                if (!sortMotor.isBusy()) {
+                    shootTimer = getRuntime();
+                    shootState = 3;
+                }
+                break;
+
+            case 3:
+
+                if (getRuntime() - shootTimer >= 0.2) {
+                    liftLeft.setPosition(1);
+                    liftRight.setPosition(0);
+                    shootTimer = getRuntime();
+                    shootState = 4;
+                }
+                break;
+
+            case 4:
+
+                if (getRuntime() - shootTimer >= 0.1) {
+                    liftLeft.setPosition(0);
+                    liftRight.setPosition(1);
+                    shootTimer = getRuntime();
+                    shootState = 5;
+                }
+                break;
+
+            case 5:
+
+                if (getRuntime() - shootTimer >= 0.1) {
+                    shootingActive = false;
+                    launcherLeft.setVelocity(0);
+                    launcherRight.setVelocity(0);
+                }
+                break;
         }
-        tagOfInterest=null;
-        return null;
+
     }
 
-    // --- TELEMETRY ---
+    private boolean lastLB = false;
+    private boolean intakeSequenceActive = false;
+    private int intakeState = 0;
+    private double intakeTimer = 0;
+
+    private void intakeSequence(){
+        boolean lb = gamepad1.left_bumper;
+
+        if (lb && !lastLB && !intakeSequenceActive) {
+            intakeSequenceActive = true;
+            intakeState = 0;
+        }
+        lastLB = lb;
+
+        if (!intakeSequenceActive) return;
+
+        switch (intakeState) {
+
+            case 0:
+
+                intakeMotor.setPower(0.8);
+
+                boolean greenDetected = (colorSensor.green() > 150);
+                boolean purpleDetected = (colorSensor.red() > 150 && colorSensor.blue() > 150);
+
+                if (greenDetected || purpleDetected) {
+                    intakeTimer = getRuntime();
+                    intakeMotor.setPower(0);
+                    intakeState = 1;
+                }
+
+                break;
+
+            case 1:
+
+                if (getRuntime() - intakeTimer >= 0.1) {
+                    intakeState = 2;
+                }
+                intakeMotor.setPower(0.8);
+
+                break;
+
+            case 2:
+                intakeMotor.setPower(0);
+
+                if (!sortMotor.isBusy()) {
+
+                    int currentPos = sortMotor.getCurrentPosition();
+                    int moveTicks = (int)(60 * COUNTS_PER_DEGREE);
+                    int target = currentPos + moveTicks;
+
+                    sortMotor.setTargetPosition(target);
+                    sortMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+                    sortMotor.setPower(SORT_POWER);
+
+                    intakeState = 3;
+                }
+
+                break;
+
+            case 3:
+
+                if (!sortMotor.isBusy()) {
+                    intakeSequenceActive = false; // stop until next press
+                }
+
+                break;
+        }
+
+
+    }
+
+    // ================= TELEMETRY =================
     private void updateTelemetry(){
-        telemetryDashboard.clearAll();
-        telemetryDashboard.addLine("SHOOTER");
-        telemetryDashboard.addData("RPM",targetRPM);
-        telemetryDashboard.addData("On",shooterOn);
-        telemetryDashboard.addLine("HOOD");
-        telemetryDashboard.addData("Pos",hoodPos);
-        telemetryDashboard.addLine("INTAKE");
-        telemetryDashboard.addData("Power",intakeMotor.getPower());
-        telemetryDashboard.addLine("SORT");
-        telemetryDashboard.addData("Power",sortMotor.getPower());
-        telemetryDashboard.addLine("LIFT");
-        telemetryDashboard.addData("Up",liftUp);
-        telemetryDashboard.addLine("COLOR");
-        telemetryDashboard.addData("Red",colorSensor.red());
-        telemetryDashboard.addData("Blue",colorSensor.blue());
-        telemetryDashboard.addLine("DRIVE");
-        telemetryDashboard.addData("FL Vel",frontLeft.getVelocity());
-        telemetryDashboard.addData("FR Vel",frontRight.getVelocity());
-        telemetryDashboard.addData("BL Vel",backLeft.getVelocity());
-        telemetryDashboard.addData("BR Vel",backRight.getVelocity());
-        telemetryDashboard.addLine("AUTO-ALIGN");
-        if(tagOfInterest!=null){
-            telemetryDashboard.addData("Tag24 X/Y",tagOfInterest.pose.x+","+tagOfInterest.pose.y);
-            telemetryDashboard.addData("Distance",Math.hypot(tagOfInterest.pose.x,tagOfInterest.pose.y)*39.37);
-        } else telemetryDashboard.addLine("Tag 24 not detected");
+        telemetryDashboard.addData("Sorter ticks/deg",ticksPerDegree);
+        telemetryDashboard.addData("120deg ticks",SORT_MOVE_TICKS);
+        telemetryDashboard.addData("Sorter position",sortMotor.getCurrentPosition());
+        telemetry.addData("Red", colorSensor.red());
+        telemetry.addData("Green", colorSensor.green());
+        telemetry.addData("Blue", colorSensor.blue());
         telemetryDashboard.update();
-    }
-
-    private class Pose2D{
-        public double x,y,heading,distance;
-        public Pose2D(double x,double y,double h,double d){ this.x=x; this.y=y; this.heading=h; this.distance=d; }
-    }
-
-    private class AprilTagDetectionPipeline extends OpenCvPipeline {
-        public double tagsize, fx, fy, cx, cy;
-        public ArrayList<AprilTagDetection> latestDetections=new ArrayList<>();
-        public AprilTagDetectionPipeline(double ts,double fx,double fy,double cx,double cy){
-            this.tagsize=ts; this.fx=fx; this.fy=fy; this.cx=cx; this.cy=cy;
-        }
-        @Override
-        public Mat processFrame(Mat input){
-            latestDetections.clear();
-            // TODO: Add real AprilTag detection logic here
-            return input;
-        }
-        public ArrayList<AprilTagDetection> getLatestDetections(){ return latestDetections; }
     }
 }
