@@ -190,6 +190,7 @@ public class TeleOp2026V1 extends LinearOpMode {
         hoodRight.setPosition(1.0 - hoodPosX);
     }
 
+    // ================= SHOOTING =================
     private boolean shootingActive = false;
     private boolean flywheelsStarted = false;
     static final double COUNTS_PER_REV = 1378.0;
