@@ -283,7 +283,8 @@ public class TeleOp2026V1 extends LinearOpMode {
     private boolean intakeSequenceActive = false;
     private int intakeState = 0;
     private double intakeTimer = 0;
-
+    private int[] indexOrder = new int[3];
+    
     private void intakeSequence(){
         boolean lb = gamepad1.left_bumper;
 
