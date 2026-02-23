@@ -216,7 +216,7 @@ public class TeleOp2026V1 extends LinearOpMode {
             case 1:  //Following intake must shift the indexer 60 degrees
                 if (!sortMotor.isBusy() && !liftRight.isBusy() && !liftLeft.isBusy()) {
                     int currentPos = sortMotor.getCurrentPosition();
-                    SORT_MOVE_TICKS = (int)(60 * COUNTS_PER_DEGREE);
+                    SORT_MOVE_TICKS = (int)(SORT_DEGREES/2 * COUNTS_PER_DEGREE);
                     int target = currentPos + SORT_MOVE_TICKS;
                     sortMotor.setTargetPosition(target);
                     sortMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
@@ -273,6 +273,8 @@ public class TeleOp2026V1 extends LinearOpMode {
 
     }
 
+
+    // ================= INTAKE =================
     private boolean lastLB = false;
     private boolean intakeSequenceActive = false;
     private int intakeState = 0;
@@ -314,13 +316,14 @@ public class TeleOp2026V1 extends LinearOpMode {
             case 2:
                 if(getRuntime()-intakeTIme>=1 && !sortMotor.isBusy()){
                     int currentPos = sortMotor.getCurrentPosition();
-                    int moveTicks = (int)(120 * COUNTS_PER_DEGREE);
+                    int moveTicks = (int)(SORT_DEGREES * COUNTS_PER_DEGREE);
                     int target = currentPos + moveTicks;
 
                     sortMotor.setTargetPosition(target);
                     sortMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
                     sortMotor.setPower(SORT_POWER);
-
+                    
+                    ballsIn++;
                     intakeState = 3;
                 }
                 break;
