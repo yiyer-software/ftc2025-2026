@@ -188,6 +188,7 @@ public class TeleOp2026V1 extends LinearOpMode {
     private int ballsLaunced = 0;
     private double sorterTimer = 0;
     private double liftTimer = 0;
+    private int[] indexOrder = new int[3]; //To be used for sorting in endgame
     private void shootingSequence(){
         boolean rb = gamepad1.right_bumper;
         if (rb && !lastRB && !shootingActive) {
@@ -263,6 +264,7 @@ public class TeleOp2026V1 extends LinearOpMode {
             case 6:
                 shootingActive = false;
                 ballsLaunched = 0;
+                indexOrder = [2,2,2]
                 launcherLeft.setVelocity(0);
                 launcherRight.setVelocity(0);
                 break;
@@ -274,53 +276,45 @@ public class TeleOp2026V1 extends LinearOpMode {
     private boolean lastLB = false;
     private boolean intakeSequenceActive = false;
     private int intakeState = 0;
+    private int ballsIn = 0;
     private double intakeTimer = 0;
-    private int[] indexOrder = new int[3];
+    indexOrder = [2,2,2];
     
     private void intakeSequence(){
         boolean lb = gamepad1.left_bumper;
-
         if (lb && !lastLB && !intakeSequenceActive) {
             intakeSequenceActive = true;
             intakeState = 0;
         }
         lastLB = lb;
-
         if (!intakeSequenceActive) return;
 
         switch (intakeState) {
-
+                
             case 0:
-
                 intakeMotor.setPower(0.8);
-
                 boolean greenDetected = (colorSensor.green() > 150);
                 boolean purpleDetected = (colorSensor.red() > 150 && colorSensor.blue() > 150);
-
                 if (greenDetected || purpleDetected) {
                     intakeTimer = getRuntime();
                     intakeMotor.setPower(0);
+                    if(greenDetected) indexOrder[ballsIn-1] = 1;
+                    if(purpleDetected) indexOrder[ballsIn-1] = 0;
                     intakeState = 1;
                 }
-
                 break;
 
             case 1:
-
                 if (getRuntime() - intakeTimer >= 0.1) {
                     intakeState = 2;
                 }
                 intakeMotor.setPower(0.8);
-
                 break;
 
             case 2:
-                intakeMotor.setPower(0);
-
-                if (!sortMotor.isBusy()) {
-
+                if(getRuntime()-intakeTIme>=1 && !sortMotor.isBusy()){
                     int currentPos = sortMotor.getCurrentPosition();
-                    int moveTicks = (int)(60 * COUNTS_PER_DEGREE);
+                    int moveTicks = (int)(120 * COUNTS_PER_DEGREE);
                     int target = currentPos + moveTicks;
 
                     sortMotor.setTargetPosition(target);
@@ -329,15 +323,16 @@ public class TeleOp2026V1 extends LinearOpMode {
 
                     intakeState = 3;
                 }
-
                 break;
 
             case 3:
 
-                if (!sortMotor.isBusy()) {
-                    intakeSequenceActive = false; // stop until next press
+                if (!sortMotor.isBusy() && ballsIn<3) {
+                    intakeState = 0;
                 }
-
+                if(ballsIn>=3){
+                    intakeSeqeunceActive = false;
+                }
                 break;
         }
 
