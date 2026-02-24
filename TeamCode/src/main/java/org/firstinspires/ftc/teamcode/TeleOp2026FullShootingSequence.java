@@ -12,7 +12,7 @@ import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.Servo;
 
 @Config
-@TeleOp(name = "TeleOp2026V1", group = "Competition")
+@TeleOp(name = "TeleOp2026FullShootingSequence", group = "Competition")
 public class TeleOp2026V1 extends LinearOpMode {
     // ================= HARDWARE =================
     private DcMotorEx frontLeft, frontRight, backLeft, backRight;
