@@ -240,67 +240,75 @@ public class TeleOp2026V1 extends LinearOpMode {
                 if (!sortMotor.isBusy()) {
                     if(ballsLaunched == 0){
                         int currentPos = sortMotor.getCurrentPosition();
-                        SORT_MOVE_TICKS = (int) ((SORT_DEGREES / 2.0) * COUNTS_PER_DEGREE);
+                        SORT_MOVE_TICKS = (int) ((SORT_DEGREES/4.0) * COUNTS_PER_DEGREE);
                         int target = currentPos + SORT_MOVE_TICKS;
                         sortMotor.setTargetPosition(target);
                         sortMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
                         sortMotor.setPower(SORT_POWER);
                         indexerPos+=2;
                         indexerPos = indexerPos%3;
+                        sorterTimer = getRuntime();
+                        
                     }else{
                         int currentPos = sortMotor.getCurrentPosition();
-                        SORT_MOVE_TICKS = (int) ((SORT_DEGREES) * COUNTS_PER_DEGREE);
+                        SORT_MOVE_TICKS = (int) ((SORT_DEGREES/2.0) * COUNTS_PER_DEGREE);
                         int target = currentPos + SORT_MOVE_TICKS;
                         sortMotor.setTargetPosition(target);
                         sortMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
                         sortMotor.setPower(SORT_POWER);
+                        
                         indexerPos++;
-                        indexerPos = indexerPos%3;  
+                        indexerPos = indexerPos%3; 
+                        sorterTimer = getRuntime();
                     }
                     shootState = 2;
                 }
                 break;
 
             case 2:
-                if (!sortMotor.isBusy()) {
-                    sorterTimer = getRuntime();
+                if (!sortMotor.isBusy() && getRuntime() - sorterTimer >= 0.5) {
+                    liftLeft.setPosition(0+0.35);
+                    liftRight.setPosition(1-0.35);
+                    liftTimer = getRuntime();
                     shootState = 3;
                 }
                 break;
 
             case 3:
-                if (getRuntime() - sorterTimer >= 0.25) {
-                    liftLeft.setPosition(0+0.35);
-                    liftRight.setPosition(1-0.35);
+                if (getRuntime() - liftTimer >= 1) {
+                    liftLeft.setPosition(0);
+                    liftRight.setPosition(1);
                     liftTimer = getRuntime();
+                    ballsLaunched++;
                     shootState = 4;
                 }
                 break;
 
             case 4:
-                if (getRuntime() - liftTimer >= 0.35) {
-                    liftLeft.setPosition(0);
-                    liftRight.setPosition(1);
-                    liftTimer = getRuntime();
-                    ballsLaunched++;
-                    shootState = 5;
-                }
-                break;
-
-            case 5:
                 if (ballsLaunched == 3) {
-                    shootState = 6;
-                } else if (getRuntime() - liftTimer >= 0.35) {
+                    shootState = 5;
+                } else if (getRuntime() - liftTimer >= 1) {
                     shootState = 1;
                 }
                 break;
 
-            case 6:
+            case 5:
                 shootingActive = false;
                 ballsLaunched = 0;
                 indexOrder = new int[]{2, 2, 2};
                 launcherLeft.setVelocity(0);
                 launcherRight.setVelocity(0);
+
+                int currentPos = sortMotor.getCurrentPosition();
+                SORT_MOVE_TICKS = (int) ((SORT_DEGREES/4.0) * COUNTS_PER_DEGREE);
+                int target = currentPos + SORT_MOVE_TICKS;
+                sortMotor.setTargetPosition(target);
+                sortMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+                sortMotor.setPower(SORT_POWER);
+                indexerPos+=2;
+                indexerPos = indexerPos%3;
+                sorterTimer = getRuntime();
+                
                 break;
         }
     }
@@ -325,7 +333,6 @@ public class TeleOp2026V1 extends LinearOpMode {
 
                 if (greenDetected || purpleDetected) {
                     intakeTimer = getRuntime();
-                    intakeMotor.setPower(0);
 
                     if (ballsIn >= 0 && ballsIn < 3) {
                         if (greenDetected) indexOrder[ballsIn] = 1;
@@ -342,16 +349,9 @@ public class TeleOp2026V1 extends LinearOpMode {
                 break;
 
             case 1:
-                intakeMotor.setPower(0.8);
-                if (getRuntime() - intakeTimer >= 0.1) {
-                    intakeState = 2;
-                }
-                break;
-
-            case 2:
-                if (getRuntime() - intakeTimer >= 1.0 && !sortMotor.isBusy()) {
+                if (getRuntime() - intakeTimer >= 0.75 && !sortMotor.isBusy()) {
                     int currentPos = sortMotor.getCurrentPosition();
-                    int moveTicks = (int) (SORT_DEGREES * COUNTS_PER_DEGREE);
+                    int moveTicks = (int) (SORT_DEGREES/2.0 * COUNTS_PER_DEGREE);
                     int target = currentPos + moveTicks;
 
                     sortMotor.setTargetPosition(target);
@@ -361,11 +361,11 @@ public class TeleOp2026V1 extends LinearOpMode {
                     indexerPos++;
                     indexerPos = indexerPos%3;
                     ballsIn++;
-                    intakeState = 3;
+                    intakeState = 2;
                 }
                 break;
 
-            case 3:
+            case 2:
                 if (!sortMotor.isBusy() && ballsIn < 3) {
                     intakeState = 0;
                 }
