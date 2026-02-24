@@ -202,10 +202,10 @@ public class TeleOp2026V1 extends LinearOpMode {
 
         double speed = 0.05;
 
-        if (gamepad1.dpad_up) hoodPosX -= speed * dt;
-        if (gamepad1.dpad_down) hoodPosX += speed * dt;
+        if (gamepad1.dpad_up) hoodPosX += speed * dt;
+        if (gamepad1.dpad_down) hoodPosX -= speed * dt;
 
-        hoodPosX = Math.max(0.35, Math.min(0.7, hoodPosX));
+        hoodPosX = Math.max(0.1, Math.min(0.7, hoodPosX));
 
         hoodLeft.setPosition(hoodPosX);
         hoodRight.setPosition(1.0 - hoodPosX);
