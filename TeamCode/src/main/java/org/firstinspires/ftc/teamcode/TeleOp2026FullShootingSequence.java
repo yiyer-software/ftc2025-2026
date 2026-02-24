@@ -187,7 +187,7 @@ public class TeleOp2026V1 extends LinearOpMode {
             liftRight.setPosition(0);
         }
 
-        if (liftActive && getRuntime() - liftStartTime >= 0.4) {
+        if (liftActive && getRuntime() - liftStartTime >= 0.5) {
             liftLeft.setPosition(0);
             liftRight.setPosition(1);
             liftActive = false;
@@ -270,8 +270,8 @@ public class TeleOp2026V1 extends LinearOpMode {
 
             case 3:
                 if (getRuntime() - sorterTimer >= 0.25) {
-                    liftLeft.setPosition(1);
-                    liftRight.setPosition(0);
+                    liftLeft.setPosition(0+0.35);
+                    liftRight.setPosition(1-0.35);
                     liftTimer = getRuntime();
                     shootState = 4;
                 }
