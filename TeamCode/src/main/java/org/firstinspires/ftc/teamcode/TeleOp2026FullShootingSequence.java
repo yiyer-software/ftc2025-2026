@@ -62,7 +62,6 @@ public class TeleOp2026V1 extends LinearOpMode {
     private int ballsLaunched = 0;
     private double sorterTimer = 0.0;
     private double liftTimer = 0.0;
-    private int[] indexOrder = new int[]{2, 2, 2};
 
     // ================= INTAKE STATE =================
     private boolean lastLB = false;
