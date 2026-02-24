@@ -238,7 +238,6 @@ public class TeleOp2026V1 extends LinearOpMode {
                 break;
 
             case 1:
-                // Removed servo busy condition per request.
                 if (!sortMotor.isBusy()) {
                     if(ballsLaunched == 0){
                         int currentPos = sortMotor.getCurrentPosition();
