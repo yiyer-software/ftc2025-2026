@@ -200,7 +200,7 @@ public class TeleOp2026V1 extends LinearOpMode {
     private void shiftIndexer(){
         boolean a = gamepad.a;
         if(a && notShifting){
-            notShifting = False;
+            notShifting = false;
             int currentPos = sortMotor.getCurrentPosition();
             SORT_MOVE_TICKS = (int) ((5) * COUNTS_PER_DEGREE); //Shift 5 degrees
             int target = currentPos + SORT_MOVE_TICKS;
