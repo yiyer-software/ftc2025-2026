@@ -49,9 +49,10 @@ public class TeleOp2026V1 extends LinearOpMode {
     private boolean liftActive = false;
     private double liftStartTime = 0.0;
     
-    // ================= TRACKING BALLS =================
+    // ================= TRACKING BALLS AND INDEXER =================
     private int[] indexOrder = new int[]{2, 2, 2};
     private int indexerPos = 0;
+    private boolean notShifting = true;
     
     // ================= SHOOTING STATE =================
     private boolean shootingActive = false;
@@ -163,7 +164,7 @@ public class TeleOp2026V1 extends LinearOpMode {
         backRight.setVelocity(br * DRIVE_TICKS_PER_SEC);
     }
 
-    // ================= SHOOTER =================
+    // ================= SHOOTER MANUAL =================
     private void handleShooter() {
         boolean y = gamepad1.y;
         if (y && !lastY) shooterOn = !shooterOn;
@@ -180,19 +181,39 @@ public class TeleOp2026V1 extends LinearOpMode {
 
     // ================= LIFT =================
     private void handleLift() {
-        if (!liftActive) {
+        boolean x = gamepad.x;
+        if (!liftActive && x) {
             liftActive = true;
             liftStartTime = getRuntime();
-            liftLeft.setPosition(1);
-            liftRight.setPosition(0);
+            liftLeft.setPosition(1-0.35);
+            liftRight.setPosition(0.35);
         }
 
-        if (liftActive && getRuntime() - liftStartTime >= 0.5) {
-            liftLeft.setPosition(0);
-            liftRight.setPosition(1);
+        if (liftActive && getRuntime() - liftStartTime >= 1) {
+            liftLeft.setPosition(0.01);
+            liftRight.setPosition(0.99);
             liftActive = false;
         }
     }
+
+    // ================= MANUAL SHIFT INDEXER=================
+    private void shiftIndexer(){
+        boolean a = gamepad.a;
+        if(a && notShifting){
+            notShifting = False;
+            int currentPos = sortMotor.getCurrentPosition();
+            SORT_MOVE_TICKS = (int) ((5) * COUNTS_PER_DEGREE); //Shift 5 degrees
+            int target = currentPos + SORT_MOVE_TICKS;
+            sortMotor.setTargetPosition(target);
+            sortMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+            sortMotor.setPower(SORT_POWER);
+            sortTimer = getRuntime();
+        }
+        if(!notShifting && getRuntime()-sortTimer >=0.25){
+            notShifting = true;
+        }
+    }
+
 
     // ================= HOOD =================
     private void handleHoodManual() {
@@ -205,7 +226,7 @@ public class TeleOp2026V1 extends LinearOpMode {
         if (gamepad1.dpad_up) hoodPosX += speed * dt;
         if (gamepad1.dpad_down) hoodPosX -= speed * dt;
 
-        hoodPosX = Math.max(0.1, Math.min(0.7, hoodPosX));
+        hoodPosX = Math.max(0.01, Math.min(0.7, hoodPosX));
 
         hoodLeft.setPosition(hoodPosX);
         hoodRight.setPosition(1.0 - hoodPosX);
@@ -217,14 +238,13 @@ public class TeleOp2026V1 extends LinearOpMode {
         if (rb && !lastRB && !shootingActive) {
             shootingActive = true;
             shootState = 0;
-            ballsLaunched = 0;
             flywheelsStarted = false;
         }
         lastRB = rb;
 
         if (!shootingActive) return;
 
-        double vel = 6000.0 / 60.0 * TICKS_PER_REV;
+        double vel = 3000.0 / 60.0 * TICKS_PER_REV;
         launcherLeft.setVelocity(vel);
         launcherRight.setVelocity(vel);
 
@@ -238,7 +258,7 @@ public class TeleOp2026V1 extends LinearOpMode {
 
             case 1:
                 if (!sortMotor.isBusy()) {
-                    if(ballsLaunched == 0){
+                    if(ballsIn==2){
                         int currentPos = sortMotor.getCurrentPosition();
                         SORT_MOVE_TICKS = (int) ((SORT_DEGREES/4.0) * COUNTS_PER_DEGREE);
                         int target = currentPos + SORT_MOVE_TICKS;
@@ -276,8 +296,8 @@ public class TeleOp2026V1 extends LinearOpMode {
 
             case 3:
                 if (getRuntime() - liftTimer >= 1) {
-                    liftLeft.setPosition(0);
-                    liftRight.setPosition(1);
+                    liftLeft.setPosition(0..01);
+                    liftRight.setPosition(0.99);
                     liftTimer = getRuntime();
                     ballsLaunched++;
                     shootState = 4;
@@ -307,7 +327,6 @@ public class TeleOp2026V1 extends LinearOpMode {
                 sortMotor.setPower(SORT_POWER);
                 indexerPos+=2;
                 indexerPos = indexerPos%3;
-                sorterTimer = getRuntime();
                 
                 break;
         }
