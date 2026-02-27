@@ -113,7 +113,6 @@ public class TeleOp2026FullShootingSequence extends LinearOpMode {
 
         sortMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         sortMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        sortMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
         DRIVE_TICKS_PER_SEC = (MAX_RPM / 60.0) * TICKS_PER_REV;
 
