@@ -25,7 +25,7 @@ public class TeleOp2026FullShootingSequence extends LinearOpMode {
     public static double SORT_MOTOR_TICKS_PER_REV = 560.0; // REV 20:1
     public static double SORT_GEAR_NUM = 16.0;
     public static double SORT_GEAR_DEN = 13.0;
-    public static double SORT_DEGREES = 171.0;
+    public static double SORT_DEGREES = 173.0;
     public static double SORT_POWER = 0.5;
     private double ticksPerOutputRev;
     private double ticksPerDegree;
