@@ -238,7 +238,7 @@ public class TeleOp2026FullShootingSequence extends LinearOpMode {
     //================= SHIFTING INDEXER =================
     private void shiftIndexer(degreesShift){
         int currentPos = sortMotor.getCurrentPosition();
-        SORT_MOVE_TICKS = (int) ((SORT_DEGREES/4.0) * COUNTS_PER_DEGREE);
+        SORT_MOVE_TICKS = (int) ((degreesShift) * COUNTS_PER_DEGREE);
         int target = currentPos + SORT_MOVE_TICKS;
         sortMotor.setTargetPosition(target);
         sortMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
