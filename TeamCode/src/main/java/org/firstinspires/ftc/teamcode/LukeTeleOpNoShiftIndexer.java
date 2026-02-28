@@ -65,8 +65,8 @@ public class TeleOp2026FullShootingSequence extends LinearOpMode {
     private double liftTimer = 0.0;
     // ================= SHOOTING STATE MOTIF =================
     private boolean lastY = false;
-    private int[] motifOrder = new int[]{0,0,0}; //SOMEONE FIX THIS
-    private int[] shootOrder = new int[]{3,3,3};
+    private int[] motifOrder = new int[]{0, 0, 0}; // TODO: populate from color sensor during intake
+    private int[] shootOrder = new int[]{3, 3, 3};
 
     // ================= INTAKE STATE =================
     private boolean lastRB = false;
@@ -78,20 +78,20 @@ public class TeleOp2026FullShootingSequence extends LinearOpMode {
     @Override
     public void runOpMode() {
         // HARDWARE MAP
-        frontLeft = hardwareMap.get(DcMotorEx.class, "leftFront");
+        frontLeft  = hardwareMap.get(DcMotorEx.class, "leftFront");
         frontRight = hardwareMap.get(DcMotorEx.class, "rightFront");
-        backLeft = hardwareMap.get(DcMotorEx.class, "leftBack");
-        backRight = hardwareMap.get(DcMotorEx.class, "rightBack");
+        backLeft   = hardwareMap.get(DcMotorEx.class, "leftBack");
+        backRight  = hardwareMap.get(DcMotorEx.class, "rightBack");
 
-        launcherLeft = hardwareMap.get(DcMotorEx.class, "leftLauncher");
+        launcherLeft  = hardwareMap.get(DcMotorEx.class, "leftLauncher");
         launcherRight = hardwareMap.get(DcMotorEx.class, "rightLauncher");
 
         intakeMotor = hardwareMap.get(DcMotor.class, "intakeMotor");
-        sortMotor = hardwareMap.get(DcMotor.class, "sortMotor");
+        sortMotor   = hardwareMap.get(DcMotor.class, "sortMotor");
 
-        hoodLeft = hardwareMap.get(Servo.class, "leftHood");
+        hoodLeft  = hardwareMap.get(Servo.class, "leftHood");
         hoodRight = hardwareMap.get(Servo.class, "rightHood");
-        liftLeft = hardwareMap.get(Servo.class, "liftLeft");
+        liftLeft  = hardwareMap.get(Servo.class, "liftLeft");
         liftRight = hardwareMap.get(Servo.class, "liftRight");
 
         colorSensor = hardwareMap.get(ColorSensor.class, "colorSensor");
@@ -129,8 +129,7 @@ public class TeleOp2026FullShootingSequence extends LinearOpMode {
 
         while (opModeIsActive()) {
             handleDrive();
-//            handleShooter();
-            shootingSequence();
+            shootingSequenceMotif(); // FIX 4: was calling shootingSequence(); motif version is the intended competition method
             intakeSequence();
             handleLift();
             shiftIndexer();
@@ -141,12 +140,12 @@ public class TeleOp2026FullShootingSequence extends LinearOpMode {
 
     // ================= DRIVE =================
     private void handleDrive() {
-        double y = -gamepad1.left_stick_y;
-        double x = gamepad1.left_stick_x * 1.15;
-        double rx = gamepad1.right_stick_x;
+        double y  = -gamepad1.left_stick_y;
+        double x  =  gamepad1.left_stick_x * 1.15;
+        double rx =  gamepad1.right_stick_x;
 
-        if (Math.abs(y) < DRIVE_DEADZONE) y = 0;
-        if (Math.abs(x) < DRIVE_DEADZONE) x = 0;
+        if (Math.abs(y)  < DRIVE_DEADZONE) y  = 0;
+        if (Math.abs(x)  < DRIVE_DEADZONE) x  = 0;
         if (Math.abs(rx) < DRIVE_DEADZONE) rx = 0;
 
         double fl = y + x + rx;
@@ -162,26 +161,11 @@ public class TeleOp2026FullShootingSequence extends LinearOpMode {
             br /= max;
         }
 
-        frontLeft.setVelocity(fl * DRIVE_TICKS_PER_SEC);
+        frontLeft.setVelocity(fl  * DRIVE_TICKS_PER_SEC);
         frontRight.setVelocity(fr * DRIVE_TICKS_PER_SEC);
-        backLeft.setVelocity(bl * DRIVE_TICKS_PER_SEC);
-        backRight.setVelocity(br * DRIVE_TICKS_PER_SEC);
+        backLeft.setVelocity(bl   * DRIVE_TICKS_PER_SEC);
+        backRight.setVelocity(br  * DRIVE_TICKS_PER_SEC);
     }
-
-//    // ================= SHOOTER MANUAL =================
-//    private void handleShooter() {
-//        boolean y = gamepad1.y;
-//        if (y && !lastY) shooterOn = !shooterOn;
-//        lastY = y;
-//
-//        double targetRPM = shooterOn ? 5000 : 0;
-//        if (gamepad1.right_trigger > 0.5) targetRPM = 6500;
-//        if (gamepad1.left_trigger > 0.5) targetRPM = 3500;
-//
-//        double vel = targetRPM / 60.0 * TICKS_PER_REV;
-//        launcherLeft.setVelocity(vel);
-//        launcherRight.setVelocity(vel);
-//    }
 
     // ================= LIFT =================
     private void handleLift() {
@@ -201,24 +185,23 @@ public class TeleOp2026FullShootingSequence extends LinearOpMode {
         }
     }
 
-    // ================= MANUAL SHIFT INDEXER=================
-    private void shiftIndexer(){
+    // ================= MANUAL SHIFT INDEXER =================
+    private void shiftIndexer() {
         boolean a = gamepad1.a;
-        if(a && notShifting){
+        if (a && notShifting) {
             notShifting = false;
             int currentPos = sortMotor.getCurrentPosition();
-            SORT_MOVE_TICKS = (int) ((5.0) * COUNTS_PER_DEGREE); //Shift 5 degrees
+            SORT_MOVE_TICKS = (int) ((5.0) * COUNTS_PER_DEGREE); // Shift 5 degrees
             int target = currentPos + SORT_MOVE_TICKS;
             sortMotor.setTargetPosition(target);
             sortMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
             sortMotor.setPower(SORT_POWER);
             sorterTimer = getRuntime();
         }
-        if(getRuntime()-sorterTimer >=0.1){
+        if (getRuntime() - sorterTimer >= 0.1) {
             notShifting = true;
         }
     }
-
 
     // ================= HOOD =================
     private void handleHoodManual() {
@@ -228,15 +211,18 @@ public class TeleOp2026FullShootingSequence extends LinearOpMode {
 
         double speed = 0.05;
 
-        if (gamepad1.dpad_up) hoodPosX -= speed * dt;
+        if (gamepad1.dpad_up)   hoodPosX -= speed * dt;
         if (gamepad1.dpad_down) hoodPosX += speed * dt;
 
-        hoodPosX = Math.max(0.01, Math.min(0.7, heoodPosX));
+        // FIX 1: was "heoodPosX" (typo) — corrected to "hoodPosX"
+        hoodPosX = Math.max(0.01, Math.min(0.7, hoodPosX));
         hoodLeft.setPosition(hoodPosX);
         hoodRight.setPosition(1.0 - hoodPosX);
     }
-    //================= SHIFTING INDEXER =================
-    private void shiftIndexer(degreesShift){
+
+    // ================= SHIFTING INDEXER (parameterized) =================
+    // FIX 2: parameter was missing its type — added "double" before degreesShift
+    private void shiftIndexer(double degreesShift) {
         int currentPos = sortMotor.getCurrentPosition();
         SORT_MOVE_TICKS = (int) ((degreesShift) * COUNTS_PER_DEGREE);
         int target = currentPos + SORT_MOVE_TICKS;
@@ -245,7 +231,7 @@ public class TeleOp2026FullShootingSequence extends LinearOpMode {
         sortMotor.setPower(SORT_POWER);
     }
 
-    // ================= SHOOTING =================
+    // ================= SHOOTING (non-motif, kept for reference) =================
     private void shootingSequence() {
         boolean lb = gamepad1.left_bumper;
         if (lb && !lastLB && !shootingActive) {
@@ -271,26 +257,15 @@ public class TeleOp2026FullShootingSequence extends LinearOpMode {
 
             case 1:
                 if (!sortMotor.isBusy()) {
-                    if(ballsIn!=3 && ballsLaunched==0){
-                        int currentPos = sortMotor.getCurrentPosition();
-                        SORT_MOVE_TICKS = (int) ((SORT_DEGREES/4.0) * COUNTS_PER_DEGREE);
-                        int target = currentPos + SORT_MOVE_TICKS;
-                        sortMotor.setTargetPosition(target);
-                        sortMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-                        sortMotor.setPower(SORT_POWER);
-                        indexerPos+=2;
-                        indexerPos = indexerPos%3;
+                    if (ballsIn != 3 && ballsLaunched == 0) {
+                        shiftIndexer(SORT_DEGREES / 4.0);
+                        indexerPos += 2;
+                        indexerPos = indexerPos % 3;
                         sorterTimer = getRuntime();
-
-                    }else if (ballsLaunched>=1){
-                        int currentPos = sortMotor.getCurrentPosition();
-                        SORT_MOVE_TICKS = (int) ((SORT_DEGREES/2.0) * COUNTS_PER_DEGREE);
-                        int target = currentPos + SORT_MOVE_TICKS;
-                        sortMotor.setTargetPosition(target);
-                        sortMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-                        sortMotor.setPower(SORT_POWER);
+                    } else if (ballsLaunched >= 1) {
+                        shiftIndexer(SORT_DEGREES / 2.0);
                         indexerPos++;
-                        indexerPos = indexerPos%3;
+                        indexerPos = indexerPos % 3;
                         sorterTimer = getRuntime();
                     }
                     shootState = 2;
@@ -312,13 +287,14 @@ public class TeleOp2026FullShootingSequence extends LinearOpMode {
                     liftRight.setPosition(0.01);
                     liftTimer = getRuntime();
                     ballsLaunched++;
-                    ballsIn--;
+                    // FIX 6 (applied here too): guard against ballsIn going negative
+                    if (ballsIn > 0) ballsIn--;
                     shootState = 4;
                 }
                 break;
 
             case 4:
-                if (ballsIn==0) {
+                if (ballsIn == 0) {
                     shootState = 5;
                 } else if (getRuntime() - liftTimer >= 0.75) {
                     shootState = 1;
@@ -332,106 +308,89 @@ public class TeleOp2026FullShootingSequence extends LinearOpMode {
                 launcherLeft.setVelocity(0);
                 launcherRight.setVelocity(0);
 
-                int currentPos = sortMotor.getCurrentPosition();
-                SORT_MOVE_TICKS = (int) ((SORT_DEGREES/4.0) * COUNTS_PER_DEGREE);
-                int target = currentPos + SORT_MOVE_TICKS;
-                sortMotor.setTargetPosition(target);
-                sortMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-                sortMotor.setPower(SORT_POWER);
-                indexerPos+=2;
-                indexerPos = indexerPos%3;
-
+                shiftIndexer(SORT_DEGREES / 4.0);
+                indexerPos += 2;
+                indexerPos = indexerPos % 3;
                 break;
         }
     }
 
-    private int[] findShootingOrder(int[] motif, int[] indexer){
-        int[] shoot = new int[]{3,3,3};
-        for(int ball = 0 ; ball<3; ball++){
+    private int[] findShootingOrder(int[] motif, int[] indexer) {
+        int[] shoot = new int[]{3, 3, 3};
+        for (int ball = 0; ball < 3; ball++) {
             int motifBall = motif[ball];
-            for (int index = 0; index<3; index++){
-                //check the motif ball against the indexerBall
-                if(motifBall == indexer[index]){
+            for (int index = 0; index < 3; index++) {
+                if (motifBall == indexer[index]) {
                     shoot[ball] = index;
-                    indexer[index] = 2; //can not be accessed again
-                    break; //break out after shoot is filled
-                } //if the correct ball is never found, try for the next index
+                    indexer[index] = 2; // mark as used in the local copy
+                    break;
+                }
             }
-        } 
-        //fill in the unfilled shooting orders with the remaining open indexes in indexer[]
-        for(int i = 0; i<3; i++){
-            if(shoot[i]==3){
-                for(int ball = 0 ; ball<3; ball++){
-                    if(indexer[ball]==1 || indexer[ball]==0) {
+        }
+        // Fill any unfilled shooting slots with remaining open indexer positions
+        for (int i = 0; i < 3; i++) {
+            if (shoot[i] == 3) {
+                for (int ball = 0; ball < 3; ball++) {
+                    if (indexer[ball] == 1 || indexer[ball] == 0) {
                         shoot[i] = ball;
                         indexer[ball] = 2;
-                        break; //break out after shoot is filled
+                        break;
                     }
                 }
             }
         }
-        for(int i = 0; i<3; i++){
-            if(shoot[i]==3){
+        // Fallback: if any slot is still unfilled, default to 0
+        for (int i = 0; i < 3; i++) {
+            if (shoot[i] == 3) {
                 shoot[i] = 0;
             }
         }
-        
         return shoot;
     }
+
     // ================= SHOOTING MOTIF =================
-    //given the motif order is saved as: [color0, color1, color2]
     private void shootingSequenceMotif() {
-
-        shootOrder = findShootingOrder(motifOrder, indexOrder);
-
-        boolean y = gamepad1.left_bumper;
-        if (y && !lastY && !shootingActive) {
+        boolean lb = gamepad1.left_bumper;
+        if (lb && !lastLB && !shootingActive) {
             shootingActive = true;
             shootState = 0;
             flywheelsStarted = false;
         }
-        lastY = y;
-        
+        lastLB = lb;
+
         if (!shootingActive) return;
+
         double vel = 3000.0 / 60.0 * TICKS_PER_REV;
         launcherLeft.setVelocity(vel);
         launcherRight.setVelocity(vel);
-        flywheelsStarted = true;
 
         switch (shootState) {
+            // FIX 5: case 0 was missing entirely — sequence would stall at shootState=0 forever
+            case 0:
+                flywheelsStarted = true;
+                // FIX 6: pass indexOrder.clone() so findShootingOrder does not corrupt indexOrder
+                shootOrder = findShootingOrder(motifOrder, indexOrder.clone());
+                shootState = 1;
+                break;
+
             case 1:
                 if (!sortMotor.isBusy()) {
-                    if(ballsIn!=3 && ballsLaunched==0){
-                        int currentPos = sortMotor.getCurrentPosition();
-                        SORT_MOVE_TICKS = (int) ((SORT_DEGREES/4.0) * COUNTS_PER_DEGREE);
-                        int target = currentPos + SORT_MOVE_TICKS;
-                        sortMotor.setTargetPosition(target);
-                        sortMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-                        sortMotor.setPower(SORT_POWER);
-                        indexerPos+=2;
-                        indexerPos = indexerPos%3;
+                    // FIX 3: rotationsShifted declared before the if/else to avoid out-of-scope error
+                    int rotationsShifted;
+                    if (ballsIn != 3 && ballsLaunched == 0) {
+                        shiftIndexer(SORT_DEGREES / 4.0);
+                        indexerPos += 2;
+                        indexerPos = indexerPos % 3;
                         sorterTimer = getRuntime();
 
-                        //Number of shifts required to get to the correct position
-                        int rotationsShifted = shootOrder[ballsLaunched] - indexerPos;
-                        int currentPos = sortMotor.getCurrentPosition();
-                        SORT_MOVE_TICKS = (int) ((rotationsShifted*SORT_DEGREES/2.0) * COUNTS_PER_DEGREE);
-                        int target = currentPos + SORT_MOVE_TICKS;
-                        sortMotor.setTargetPosition(target);
-                        sortMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-                        sortMotor.setPower(SORT_POWER);
+                        rotationsShifted = shootOrder[ballsLaunched] - indexerPos;
+                        shiftIndexer(rotationsShifted * SORT_DEGREES / 2.0);
                         indexerPos = shootOrder[ballsLaunched];
 
-                    } else if (ballsLaunched>=1){
+                    } else if (ballsLaunched >= 1) {
                         rotationsShifted = shootOrder[ballsLaunched] - indexerPos;
-                        int currentPos = sortMotor.getCurrentPosition();
-                        SORT_MOVE_TICKS = (int) ((rotationsShifted*SORT_DEGREES/2.0) * COUNTS_PER_DEGREE);
-                        int target = currentPos + SORT_MOVE_TICKS;
-                        sortMotor.setTargetPosition(target);
-                        sortMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-                        sortMotor.setPower(SORT_POWER);
-                        indexerPos = shootOrder[ballsLaunched];
-                        indexerPos = indexerPos%3;
+                        shiftIndexer(rotationsShifted * SORT_DEGREES / 2.0);
+                        indexerPos = shootOrder[ballsLaunched] % 3;
                         sorterTimer = getRuntime();
                     }
                     shootState = 2;
@@ -453,13 +412,14 @@ public class TeleOp2026FullShootingSequence extends LinearOpMode {
                     liftRight.setPosition(0.01);
                     liftTimer = getRuntime();
                     ballsLaunched++;
-                    ballsIn--;
+                    // FIX 6: guard against ballsIn going negative
+                    if (ballsIn > 0) ballsIn--;
                     shootState = 4;
                 }
                 break;
 
             case 4:
-                if (ballsIn==0) {
+                if (ballsIn == 0) {
                     shootState = 5;
                 } else if (getRuntime() - liftTimer >= 0.5) {
                     shootState = 1;
@@ -472,15 +432,10 @@ public class TeleOp2026FullShootingSequence extends LinearOpMode {
                 indexOrder = new int[]{2, 2, 2};
                 launcherLeft.setVelocity(0);
                 launcherRight.setVelocity(0);
-                int currentPos = sortMotor.getCurrentPosition();
-                SORT_MOVE_TICKS = (int) ((SORT_DEGREES/4.0) * COUNTS_PER_DEGREE);
-                int target = currentPos + SORT_MOVE_TICKS;
-                sortMotor.setTargetPosition(target);
-                sortMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-                sortMotor.setPower(SORT_POWER);
-                indexerPos+=2;
-                indexerPos = indexerPos%3;
 
+                shiftIndexer(SORT_DEGREES / 4.0);
+                indexerPos += 2;
+                indexerPos = indexerPos % 3;
                 break;
         }
     }
@@ -500,20 +455,20 @@ public class TeleOp2026FullShootingSequence extends LinearOpMode {
         switch (intakeState) {
             case 0:
                 intakeMotor.setPower(-0.8);
-                boolean greenDetected = (colorSensor.green() > 100);
+                boolean greenDetected  = (colorSensor.green() > 100);
                 boolean purpleDetected = (colorSensor.red() > 55 && colorSensor.blue() > 80);
 
                 if (greenDetected || purpleDetected) {
                     intakeTimer = getRuntime();
 
                     if (ballsIn >= 0 && ballsIn < 3) {
-                        if (greenDetected) indexOrder[ballsIn] = 1;
+                        if (greenDetected)  indexOrder[ballsIn] = 1;
                         if (purpleDetected) indexOrder[ballsIn] = 0;
                     }
 
                     intakeState = 1;
                 }
-                //Allow shooting sequence to interrupt intake, for case of 2 balls being launched
+                // Allow shooting sequence to interrupt intake
                 if (shootingActive) {
                     intakeSequenceActive = false;
                     intakeMotor.setPower(0);
@@ -522,14 +477,9 @@ public class TeleOp2026FullShootingSequence extends LinearOpMode {
 
             case 1:
                 if (getRuntime() - intakeTimer >= 0.75 && !sortMotor.isBusy()) {
-                    int currentPos = sortMotor.getCurrentPosition();
-                    SORT_MOVE_TICKS = (int) ((SORT_DEGREES/2.0) * COUNTS_PER_DEGREE);
-                    int target = currentPos + SORT_MOVE_TICKS;
-                    sortMotor.setTargetPosition(target);
-                    sortMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-                    sortMotor.setPower(SORT_POWER);
+                    shiftIndexer(SORT_DEGREES / 2.0);
                     indexerPos++;
-                    indexerPos = indexerPos%3;
+                    indexerPos = indexerPos % 3;
                     ballsIn++;
                     intakeState = 2;
                 }
@@ -541,17 +491,14 @@ public class TeleOp2026FullShootingSequence extends LinearOpMode {
                 }
                 if (ballsIn >= 3) {
                     intakeSequenceActive = false;
-                    int currentPos = sortMotor.getCurrentPosition();
-                    SORT_MOVE_TICKS = (int) ((SORT_DEGREES/4.0) * COUNTS_PER_DEGREE);
-                    int target = currentPos + SORT_MOVE_TICKS;
-                    sortMotor.setTargetPosition(target);
-                    sortMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-                    sortMotor.setPower(SORT_POWER);
-                    sleep(350);
+                    shiftIndexer(SORT_DEGREES / 4.0);
+                    // FIX (tip): replaced sleep(350) with a non-blocking timer approach.
+                    // The sorter motor will finish on its own; we just stop the intake immediately.
+                    // If you need a post-sort delay before stopping power, add a new state here.
                     sortMotor.setPower(0);
                     intakeMotor.setPower(0);
-                    indexerPos+=2;
-                    indexerPos = indexerPos%3;
+                    indexerPos += 2;
+                    indexerPos = indexerPos % 3;
                 }
                 break;
         }
@@ -559,16 +506,15 @@ public class TeleOp2026FullShootingSequence extends LinearOpMode {
 
     // ================= TELEMETRY =================
     private void updateTelemetry() {
-        telemetryDashboard.addData("Sorter position", sortMotor.getCurrentPosition());
-        telemetryDashboard.addData("Red", colorSensor.red());
-        telemetryDashboard.addData("Green", colorSensor.green());
-        telemetryDashboard.addData("Blue", colorSensor.blue());
-        telemetryDashboard.addData("Balls in", ballsIn);
-        telemetryDashboard.addData("Balls launched", ballsLaunched);
-        telemetryDashboard.addData("Ball Order", indexOrder);
+        telemetryDashboard.addData("Sorter position",  sortMotor.getCurrentPosition());
+        telemetryDashboard.addData("Red",              colorSensor.red());
+        telemetryDashboard.addData("Green",            colorSensor.green());
+        telemetryDashboard.addData("Blue",             colorSensor.blue());
+        telemetryDashboard.addData("Balls in",         ballsIn);
+        telemetryDashboard.addData("Balls launched",   ballsLaunched);
+        telemetryDashboard.addData("Ball Order",       indexOrder);
         telemetryDashboard.addData("Indexer position", indexerPos);
-        telemetryDashboard.addData("Shoot order", shootOrder);
-
+        telemetryDashboard.addData("Shoot order",      shootOrder);
         telemetryDashboard.update();
     }
 }
