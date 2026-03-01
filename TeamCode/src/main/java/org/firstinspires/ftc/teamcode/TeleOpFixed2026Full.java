@@ -237,7 +237,7 @@ public class TeleOp2026FullShootingSequence extends LinearOpMode {
             shootingSequence();
             intakeSequence();
             //handleLift();
-            shiftIndexer();
+            shiftIndexerLarge();
             //handleHoodManual();
             updateTelemetry();
 
