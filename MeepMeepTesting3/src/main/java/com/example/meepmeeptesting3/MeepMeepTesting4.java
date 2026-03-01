@@ -25,7 +25,7 @@ public class MeepMeepTesting4 {
                                 new Pose2d(-52, 48, Math.toRadians(135))
                         )
                         .strafeTo(new Vector2d(-36, 34))
-                        .strafeTo(new Vector2d(-12, 0))
+                        .strafeTo(new Vector2d(-12, 13))
 
                         .turnTo(Math.toRadians(90))
                         .strafeTo(new Vector2d(-12, 50))
