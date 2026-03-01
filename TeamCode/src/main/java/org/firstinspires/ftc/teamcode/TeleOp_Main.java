@@ -189,7 +189,6 @@ public class TeleOp_Main extends LinearOpMode {
     //  DRIVE  (robot-centric, max speed via raw motor power)
     // ══════════════════════════════════════════════════════
     private void robotCentricDrive() {
-        if (autoIntakeActive || autoLaunchActive) return; // sequences can call their own drive if needed
 
         double y  = -gamepad1.left_stick_y;   // forward/back
         double x  =  gamepad1.left_stick_x;   // strafe

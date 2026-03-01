@@ -3,6 +3,8 @@ package org.firstinspires.ftc.teamcode;
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
+import com.acmerobotics.roadrunner.PoseVelocity2d;
+import com.acmerobotics.roadrunner.Vector2d;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.ColorSensor;
@@ -24,6 +26,9 @@ public class TeleOp2026FullShootingSequence extends LinearOpMode {
     private DcMotorEx frontLeft, frontRight, backLeft, backRight;
     private DcMotorEx launcherLeft, launcherRight;
     private DcMotor   intakeMotor, sortMotor;
+
+    private MecanumDrive drive;
+
     private Servo     hoodLeft, hoodRight, liftLeft, liftRight;
     private ColorSensor colorSensor;
 
@@ -43,6 +48,9 @@ public class TeleOp2026FullShootingSequence extends LinearOpMode {
     private final double DRIVE_DEADZONE   = 0.03;
 
     static final double COUNTS_PER_REV    = 1378.0;
+
+    private double  headingOffset = 0.0;
+
     static final double COUNTS_PER_DEGREE = COUNTS_PER_REV / 360.0;
 
     // CHANGED: how long (seconds) to pause after retracting the kicker before
@@ -77,6 +85,7 @@ public class TeleOp2026FullShootingSequence extends LinearOpMode {
     private boolean lastDpadLeft = false;
 
     private boolean liftActive    = false;
+    public static double DRIVE_PRECISION_SCALE = 0.35;
     private double  liftStartTime = 0.0;
 
     // indexer / balls tracking (your original)
@@ -522,30 +531,40 @@ public class TeleOp2026FullShootingSequence extends LinearOpMode {
 
     // ----------------- the rest of your original code (unchanged) -----------------
     private void handleDrive() {
-        double y  = -gamepad1.left_stick_y;
-        double x  =  gamepad1.left_stick_x * 1.15;
-        double rx =  gamepad1.right_stick_x;
+        double scale = (gamepad1.right_trigger > 0.3) ? DRIVE_PRECISION_SCALE : 1.0;
 
-        if (Math.abs(y)  < DRIVE_DEADZONE) y  = 0;
-        if (Math.abs(x)  < DRIVE_DEADZONE) x  = 0;
-        if (Math.abs(rx) < DRIVE_DEADZONE) rx = 0;
+        double y  = applyDeadzone(-gamepad1.left_stick_y);
+        double x  = applyDeadzone( gamepad1.left_stick_x);
+        double rx = applyDeadzone( gamepad1.right_stick_x);
 
-        double fl = y + x + rx;
-        double fr = y - x - rx;
-        double bl = y - x + rx;
-        double br = y + x - rx;
+        y  = cube(y);
+        x  = cube(x);
+        rx = cube(rx);
 
-        double max = Math.max(Math.abs(fl), Math.max(Math.abs(fr), Math.max(Math.abs(bl), Math.abs(br))));
-        if (max > 1) { fl /= max; fr /= max; bl /= max; br /= max; }
+        if (gamepad1.b) headingOffset = drive.localizer.getPose().heading.toDouble();
 
-        frontLeft.setVelocity(fl * DRIVE_TICKS_PER_SEC);
-        frontRight.setVelocity(fr * DRIVE_TICKS_PER_SEC);
-        backLeft.setVelocity(bl * DRIVE_TICKS_PER_SEC);
-        backRight.setVelocity(br * DRIVE_TICKS_PER_SEC);
+        double heading = drive.localizer.getPose().heading.toDouble() - headingOffset;
+        double cosH    = Math.cos(-heading);
+        double sinH    = Math.sin(-heading);
+        double rotX    =  x * cosH - y * sinH;
+        double rotY    =  x * sinH + y * cosH;
+
+        drive.setDrivePowers(new PoseVelocity2d(
+                new Vector2d(rotY * scale, -rotX * scale),
+                -rx * scale
+        ));
+    }
+
+    private double applyDeadzone(double v) {
+        return Math.abs(v) < DRIVE_DEADZONE ? 0.0 : v;
+    }
+
+    private double cube(double v) {
+        return v * v * v;
     }
 
     private void shiftIndexer() {
-        boolean a = gamepad1.a;
+        boolean a = gamepad1.dpad_down;
         if (a && notShifting) {
             notShifting = false;
             int moveTicks = (int)(5.0 * COUNTS_PER_DEGREE);
@@ -768,6 +787,7 @@ public class TeleOp2026FullShootingSequence extends LinearOpMode {
         telemetryDashboard.addData("Launcher RPM (selected)", launcherRPM);
         telemetryDashboard.addData("Hood position (selected)", hoodPosX);
         telemetryDashboard.addData("Motif Detected", motifDetected ? ("ID=" + motifTagId + " pat=" + Arrays.toString(motifPattern)) : "none");
+        telemetry.addData("Drive",    "LS fwd/strafe | RS rotate");
         telemetryDashboard.update();
     }
 }
